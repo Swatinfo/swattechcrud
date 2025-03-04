@@ -1,0 +1,1725 @@
+# Laravel 12 Crud Package Generation - Complete File List with Detailed Code Requirements
+
+I'll provide a comprehensive list of all files needed for the Laravel 12 Crud package, organized in dependency order with detailed code requirements. This file can be used as input for code generation.
+
+## 1. Core Configuration Files
+
+1.** @workspace generate code for following
+composer.json**
+   - Purpose: Define package dependencies and autoloading
+   - Code Requirements:
+     - Set package name to "vendor/swattech/crud"
+     - Require PHP 8.1+
+     - Require Laravel 12 compatibility
+     - Include dependencies: illuminate/support, illuminate/database, illuminate/console
+     - Include Vuexy theme package dependency
+     - Include dev dependencies: phpunit/phpunit, mockery/mockery, orchestra/testbench
+     - Define PSR-4 autoloading for Vendor\\CrudGenerator namespace pointing to src/
+     - Configure Laravel auto-discovery for the service provider
+     - Set license to MIT
+     - Include keywords for package discovery
+     - Set minimum stability to stable
+
+2.** @workspace generate code for following
+README.md**
+   - Purpose: Documentation file explaining package usage
+   - Code Requirements:
+     - Include package title and brief description
+     - Add installation instructions with Composer command
+     - Include basic configuration steps
+     - Add usage examples with common commands
+     - Include command reference with all available options
+     - Document extension points and customizations
+     - Add troubleshooting section for common issues
+     - Include license information
+     - Add contributing guidelines
+     - Include badges for build status, version, etc.
+
+3.** @workspace generate code for following
+config/crud.php**
+   - Purpose: Configuration settings for the package
+   - Code Requirements:
+     - Create an array with all configuration options with detailed comments
+     - Include path configurations for generated files (models, controllers, views, etc.)
+     - Define namespace settings with defaults (App\Models, App\Http\Controllers, etc.)
+     - Include database connection settings (default to use app's default connection)
+     - Add relationship detection settings (naming conventions, foreign key patterns)
+     - Include model settings (soft deletes, timestamps, etc. with boolean toggles)
+     - Add stub path customization options (allow custom stubs)
+     - Include authorization settings (policies generation toggle, roles integration)
+     - Add caching configuration (lifetime, driver, tags)
+     - Include Vuexy theme settings (asset paths, component paths)
+     - Define custom field type mappings (database to PHP, database to HTML input)
+     - Include export/import format options (CSV, Excel, PDF)
+     - Add validation rule templates for common field types
+
+## 2. Core Interfaces/Contracts
+
+4.** @workspace generate code for following
+src/Contracts/AnalyzerInterface.php**
+   - Purpose: Define standard methods for analyzers
+   - Code Requirements:
+     - Create a PHP interface with namespace Vendor\CrudGenerator\Contracts
+     - Define analyze(string $table) method
+     - Include getResults() method to retrieve analysis results
+     - Add setConnection(string $connection) method
+     - Include getSchema() method to retrieve schema information
+     - Add getDatabaseName() method
+     - Include supportedRelationships() method returning array of supported types
+     - Add detailed PHPDoc blocks for each method
+
+5.** @workspace generate code for following
+src/Contracts/GeneratorInterface.php**
+   - Purpose: Define standard methods for all generators
+   - Code Requirements:
+     - Create a PHP interface with namespace Vendor\CrudGenerator\Contracts
+     - Define generate(string $table, array $options = []) method
+     - Include setOptions(array $options) method for generator configuration
+     - Add getStub() method for template retrieval
+     - Include getNamespace() method to retrieve namespace
+     - Add getPath() method to get file path
+     - Include getClassName() method to get class name
+     - Add getGeneratedFiles() method to return array of generated files
+     - Include supportsCustomization() method (boolean)
+     - Add detailed PHPDoc blocks for each method
+
+6.** @workspace generate code for following
+src/Contracts/RepositoryInterface.php**
+   - Purpose: Define repository pattern methods
+   - Code Requirements:
+     - Create a PHP interface with namespace Vendor\CrudGenerator\Contracts
+     - Define all() method for retrieving all records (with filter, sort parameters)
+     - Include paginate() method with page, perPage parameters
+     - Add create(array $data) method for creating records
+     - Include update(int $id, array $data) method for updating records
+     - Add delete(int $id) method for deleting records
+     - Include find(int $id) method for finding records by ID
+     - Add findBy(string $column, $value) method
+     - Include with(array $relations) method for eager loading
+     - Add getModel() method to get the repository's model
+     - Include getCacheLifetime() method
+     - Add clearCache() method
+     - Include detailed PHPDoc blocks for each method
+
+## 3. Helper/Utility Classes
+
+7.** @workspace generate code for following
+src/Helpers/StringHelper.php**
+   - Purpose: String manipulation utilities
+   - Code Requirements:
+     - Create a class with namespace Vendor\CrudGenerator\Helpers
+     - Implement static methods for string manipulation
+     - Add camelCase(string $value) method
+     - Include studlyCase(string $value) method for Pascal case conversion
+     - Add snakeCase(string $value) method
+     - Include pluralize(string $value) method using Laravel's Str helper
+     - Add singularize(string $value) method
+     - Include generateSlug(string $value) method
+     - Add parseTemplate(string $template, array $variables) method
+     - Include isValidNamespace(string $namespace) method with regex validation
+     - Add isValidClassName(string $className) method
+     - Include generateRandomString(int $length) method
+     - Add detailed PHPDoc blocks for each method
+
+8.** @workspace generate code for following
+src/Helpers/SchemaHelper.php**
+   - Purpose: Database schema utilities
+   - Code Requirements:
+     - Create a class with namespace Vendor\CrudGenerator\Helpers
+     - Implement getTableColumns(string $table, string $connection = null) method
+     - Add getTableIndexes(string $table, string $connection = null) method
+     - Include getForeignKeys(string $table, string $connection = null) method
+     - Add getPrimaryKey(string $table, string $connection = null) method
+     - Include hasTimestamps(string $table, string $connection = null) method
+     - Add columnTypeToPhpType(string $columnType) method with type mapping
+     - Include columnTypeToFormType(string $columnType) method
+     - Add hasColumn(string $table, string $column, string $connection = null) method
+     - Include getUniqueColumns(string $table, string $connection = null) method
+     - Add getEnumValues(string $table, string $column, string $connection = null) method
+     - Use Laravel's Schema facade and DB facade for implementation
+     - Include detailed PHPDoc blocks for each method
+
+9.** @workspace generate code for following
+src/Helpers/RelationshipHelper.php**
+   - Purpose: Relationship utilities
+   - Dependencies: StringHelper, SchemaHelper
+   - Code Requirements:
+     - Create a class with namespace Vendor\CrudGenerator\Helpers
+     - Implement guessRelationshipMethod(string $table, string $foreignKey) method
+     - Add guessInverseRelationship(string $relationshipType) method
+     - Include formatRelationshipMethod(string $type, string $relatedTable) method
+     - Add getRelatedTable(string $foreignKey) method
+     - Include getRelationshipArguments(string $type, string $relatedTable, string $foreignKey) method
+     - Add buildRelationshipTree(array $tables) method
+     - Include detectCircularRelationships(array $relationships) method
+     - Add generateRelationshipMethods(array $relationships) method
+     - Include validateRelationships(array $relationships) method
+     - Add getPotentialRelations(string $table) method
+     - Include detailed PHPDoc blocks for each method
+
+10.** @workspace generate code for following
+src/Utilities/ResponseBuilder.php**
+    - Purpose: API response formatting
+    - Code Requirements:
+      - Create a class with namespace Vendor\CrudGenerator\Utilities
+      - Implement success(mixed $data, string $message = '', int $code = 200) method
+      - Add error(string $message, int $code = 400, array $errors = []) method
+      - Include collection(Collection $collection, $transformer = null) method
+      - Add item($item, $transformer = null) method
+      - Include paginated(LengthAwarePaginator $paginator, $transformer = null) method
+      - Add withMeta(array $meta) method for metadata
+      - Include withLinks(array $links) method for HATEOAS links
+      - Add cached(mixed $data, int $ttl) method for cached responses
+      - Include transform(mixed $data, $transformer) method
+      - Add setStatusCode(int $code) method
+      - Include detailed PHPDoc blocks for each method
+
+11.** @workspace generate code for following
+src/Utilities/FilterBuilder.php**
+    - Purpose: Query filter builder
+    - Code Requirements:
+      - Create a class with namespace Vendor\CrudGenerator\Utilities
+      - Implement apply(Builder $query, array $filters) method
+      - Add parseFilterString(string $filterString) method
+      - Include addCondition(Builder $query, string $field, string $operator, $value) method
+      - Add addOrCondition(Builder $query, array $conditions) method
+      - Include addRelationshipFilter(Builder $query, string $relation, string $field, string $operator, $value) method
+      - Add addCustomFilter(Builder $query, string $name, $value) method
+      - Include validateField(string $field, array $allowedFields = []) method
+      - Add buildFilterArray(array $params) method
+      - Include getSupportedOperators() method
+      - Add escapeValue($value) method for security
+      - Include detailed PHPDoc blocks for each method
+
+12.** @workspace generate code for following
+src/Utilities/SortBuilder.php**
+    - Purpose: Query sort builder
+    - Code Requirements:
+      - Create a class with namespace Vendor\CrudGenerator\Utilities
+      - Implement apply(Builder $query, array $sorts) method
+      - Add parseSortString(string $sortString) method
+      - Include addSort(Builder $query, string $field, string $direction = 'asc') method
+      - Add addRelationshipSort(Builder $query, string $relation, string $field, string $direction = 'asc') method
+      - Include validateField(string $field, array $allowedFields = []) method
+      - Add buildSortArray(array $params) method
+      - Include getDefaultSorts() method
+      - Add parseDirectionString(string $direction) method
+      - Include validateDirection(string $direction) method
+      - Add applyCaseInsensitiveSort(Builder $query, string $field, string $direction) method
+      - Include detailed PHPDoc blocks for each method
+
+13.** @workspace generate code for following
+src/Utilities/PaginationHelper.php**
+    - Purpose: Pagination utilities
+    - Code Requirements:
+      - Create a class with namespace Vendor\CrudGenerator\Utilities
+      - Implement paginate(Builder $query, int $page = 1, int $perPage = 15) method
+      - Add simplePaginate(Builder $query, int $page = 1, int $perPage = 15) method
+      - Include cursorPaginate(Builder $query, int $perPage = 15, string $cursor = null) method
+      - Add getLengthAwarePaginator(Builder $query, int $page, int $perPage) method
+      - Include getSimplePaginator(Builder $query, int $page, int $perPage) method
+      - Add getCursorPaginator(Builder $query, int $perPage, string $cursor) method
+      - Include calculateTotalPages(int $total, int $perPage) method
+      - Add buildPaginationLinks(LengthAwarePaginator $paginator) method
+      - Include getPaginationMetadata(LengthAwarePaginator $paginator) method
+      - Add formatPaginationResult(LengthAwarePaginator $paginator) method
+      - Include detailed PHPDoc blocks for each method
+
+## 4. Analyzer Components
+
+14.** @workspace generate code for following
+src/Analyzers/DatabaseAnalyzer.php**
+    - Purpose: Analyze database schema
+    - Dependencies: AnalyzerInterface, SchemaHelper
+    - Code Requirements:
+      - Create a class implementing AnalyzerInterface
+      - Implement constructor with schema helper injection
+      - Add analyze(string $table) method implementation
+      - Include getTableStructure(string $table) method
+      - Add analyzeColumns(string $table) method
+      - Include detectPrimaryKey(string $table) method
+      - Add detectForeignKeys(string $table) method
+      - Include mapIndexes(string $table) method
+      - Add identifyUniqueColumns(string $table) method
+      - Include detectTimestampColumns(string $table) method
+      - Add mapEnumValues(string $table) method
+      - Include detectSoftDeleteColumn(string $table) method
+      - Add generateSchemaMetadata(string $table) method
+      - Include setConnection(string $connection) method
+      - Add getResults() method to return analysis results
+      - Include detailed PHPDoc blocks for each method
+
+15.** @workspace generate code for following
+src/Analyzers/Relationships/BelongsToAnalyzer.php**
+    - Purpose: Analyze belongsTo relationships
+    - Dependencies: AnalyzerInterface, RelationshipHelper, SchemaHelper
+    - Code Requirements:
+      - Create a class implementing AnalyzerInterface
+      - Implement constructor with schema and relationship helpers
+      - Add analyze(string $table) method implementation
+      - Include detectForeignKeyColumns(string $table) method
+      - Add mapParentChildRelationships(array $foreignKeys) method
+      - Include identifyReverseRelationships(array $relationships) method
+      - Add handleCustomForeignKeys(string $table) method
+      - Include mapPolymorphicBelongsTo(string $table) method
+      - Add createMethodDefinitions(array $relationships) method
+      - Include detectSoftDeletesInParents(array $relationships) method
+      - Add identifyRequiredRelationships(array $relationships) method
+      - Include getResults() method to return analysis results
+      - Add detailed PHPDoc blocks for each method
+
+16.** @workspace generate code for following
+src/Analyzers/Relationships/HasManyAnalyzer.php**
+    - Purpose: Analyze hasMany relationships
+    - Dependencies: AnalyzerInterface, RelationshipHelper, SchemaHelper
+    - Code Requirements:
+      - Create a class implementing AnalyzerInterface
+      - Implement constructor with schema and relationship helpers
+      - Add analyze(string $table) method implementation
+      - Include identifyChildTables(string $table) method
+      - Add mapOneToManyRelationships(array $childTables) method
+      - Include detectInverseBelongsTo(array $relationships) method
+      - Add handleCustomForeignKeys(string $table) method
+      - Include createMethodDefinitions(array $relationships) method
+      - Add implementCascadeOptions(array $relationships) method
+      - Include detectSoftDeletesInChildren(array $relationships) method
+      - Add mapCollectionRelationships(array $relationships) method
+      - Include getResults() method to return analysis results
+      - Add detailed PHPDoc blocks for each method
+
+17.** @workspace generate code for following
+src/Analyzers/Relationships/HasOneAnalyzer.php**
+    - Purpose: Analyze hasOne relationships
+    - Dependencies: AnalyzerInterface, RelationshipHelper, SchemaHelper
+    - Code Requirements:
+      - Create a class implementing AnalyzerInterface
+      - Implement constructor with schema and relationship helpers
+      - Add analyze(string $table) method implementation
+      - Include identifyChildTables(string $table) method
+      - Add mapOneToOneRelationships(array $childTables) method
+      - Include detectInverseBelongsTo(array $relationships) method
+      - Add handleCustomForeignKeys(string $table) method
+      - Include createMethodDefinitions(array $relationships) method
+      - Add implementCascadeOptions(array $relationships) method
+      - Include detectSoftDeletesInChildren(array $relationships) method
+      - Add getResults() method to return analysis results
+      - Include detailed PHPDoc blocks for each method
+
+18.** @workspace generate code for following
+src/Analyzers/Relationships/BelongsToManyAnalyzer.php**
+    - Purpose: Analyze many-to-many relationships
+    - Dependencies: AnalyzerInterface, RelationshipHelper, SchemaHelper
+    - Code Requirements:
+      - Create a class implementing AnalyzerInterface
+      - Implement constructor with schema and relationship helpers
+      - Add analyze(string $table) method implementation
+      - Include detectPivotTables(string $table) method
+      - Add mapManyToManyRelationships(array $pivotTables) method
+      - Include identifyPivotAttributes(array $pivotTables) method
+      - Add handleCustomPivotTableNames(string $table) method
+      - Include createMethodDefinitions(array $relationships) method
+      - Add mapTimestampsInPivots(array $pivotTables) method
+      - Include detectSoftDeletesInPivots(array $pivotTables) method
+      - Add identifyInverseRelationships(array $relationships) method
+      - Include getResults() method to return analysis results
+      - Add detailed PHPDoc blocks for each method
+
+19.** @workspace generate code for following
+src/Analyzers/Relationships/MorphToAnalyzer.php**
+    - Purpose: Analyze polymorphic relationships
+    - Dependencies: AnalyzerInterface, RelationshipHelper, SchemaHelper
+    - Code Requirements:
+      - Create a class implementing AnalyzerInterface
+      - Implement constructor with schema and relationship helpers
+      - Add analyze(string $table) method implementation
+      - Include detectPolymorphicColumns(string $table) method
+      - Add mapPolymorphicRelationships(array $polymorphicColumns) method
+      - Include identifyTargetModels(array $relationships) method
+      - Add handleCustomTypeColumns(string $table) method
+      - Include createMethodDefinitions(array $relationships) method
+      - Add mapInverseRelationships(array $relationships) method
+      - Include detectSoftDeletesInPolymorphic(array $relationships) method
+      - Add getResults() method to return analysis results
+      - Include detailed PHPDoc blocks for each method
+
+20.** @workspace generate code for following
+src/Analyzers/Relationships/MorphManyAnalyzer.php**
+    - Purpose: Analyze morphMany relationships
+    - Dependencies: AnalyzerInterface, RelationshipHelper, SchemaHelper
+    - Code Requirements:
+      - Create a class implementing AnalyzerInterface
+      - Implement constructor with schema and relationship helpers
+      - Add analyze(string $table) method implementation
+      - Include identifyPolymorphicTargets(string $table) method
+      - Add mapOneToManyPolymorphic(array $targets) method
+      - Include detectInverseMorphTo(array $relationships) method
+      - Add handleCustomMorphNames(string $table) method
+      - Include createMethodDefinitions(array $relationships) method
+      - Add implementCascadeOptions(array $relationships) method
+      - Include detectSoftDeletesInChildren(array $relationships) method
+      - Add getResults() method to return analysis results
+      - Include detailed PHPDoc blocks for each method
+
+21.** @workspace generate code for following
+src/Analyzers/RelationshipAnalyzer.php**
+    - Purpose: Master relationship detection class
+    - Dependencies: AnalyzerInterface, RelationshipHelper, All specific analyzers
+    - Code Requirements:
+      - Create a class implementing AnalyzerInterface
+      - Implement constructor with specialized analyzers injection
+      - Add analyze(string $table) method implementation
+      - Include detectRelationshipTypes(string $table) method
+      - Add mapRelationshipMetadata(array $relationships) method
+      - Include createRelationshipDefinitions(array $metadata) method
+      - Add analyzeForeignKeyConstraints(string $table) method
+      - Include mapPolymorphicRelationships(string $table) method
+      - Add detectPivotTables(string $table) method
+      - Include identifyNamingConventions() method
+      - Add createBidirectionalMappings(array $relationships) method
+      - Include handleComplexRelationships(string $table) method
+      - Add getResults() method to return analysis results
+      - Include detailed PHPDoc blocks for each method
+
+## 5. Base Implementation Classes
+
+22.** @workspace generate code for following
+src/Repositories/BaseRepository.php**
+    - Purpose: Base repository implementation
+    - Dependencies: RepositoryInterface
+    - Code Requirements:
+      - Create a class implementing RepositoryInterface
+      - Implement constructor with Model injection using dependency injection
+      - Add all() method implementation with filter and sort support
+      - Include paginate() method implementation using PaginationHelper
+      - Add create(array $data) method with event dispatching
+      - Include update(int $id, array $data) method with event dispatching
+      - Add delete(int $id) method with event dispatching and soft delete support
+      - Include find(int $id) method with caching
+      - Add findBy(string $column, $value) method
+      - Include with(array $relations) method for eager loading
+      - Add protected buildCacheKey(string $method, array $args) method
+      - Include protected getCacheLifetime() method
+      - Add protected transaction methods for database transactions
+      - Include support for query scopes from the model
+      - Add protected method for search functionality
+      - Include detailed PHPDoc blocks for each method
+
+23.** @workspace generate code for following
+src/Repositories/CacheDecorator.php**
+    - Purpose: Cache decorator for repositories
+    - Dependencies: RepositoryInterface, BaseRepository
+    - Code Requirements:
+      - Create a class implementing RepositoryInterface
+      - Implement constructor with Repository and Cache manager injection
+      - Add protected buildCacheKey(string $method, array $args) method
+      - Include all() method with caching implementation
+      - Add paginate() method with caching logic
+      - Include find(int $id) method with caching
+      - Add findBy(string $column, $value) method with caching
+      - Include create(array $data) method with cache invalidation
+      - Add update(int $id, array $data) method with cache invalidation
+      - Include delete(int $id) method with cache invalidation
+      - Add protected generateCacheTags() method
+      - Include protected setCachePrefix(string $prefix) method
+      - Add configurable cache lifetime support
+      - Include detailed PHPDoc blocks for each method
+
+24.** @workspace generate code for following
+src/Services/BaseService.php**
+    - Purpose: Base service implementation
+    - Dependencies: RepositoryInterface
+    - Code Requirements:
+      - Create a class with repository dependency injection
+      - Implement constructor with Repository interface injection
+      - Add getAll(array $filters = [], array $sorts = []) method
+      - Include getPaginated(int $page = 1, int $perPage = 15, array $filters = [], array $sorts = []) method
+      - Add findById(int $id) method
+      - Include create(array $data) method with validation support
+      - Add update(int $id, array $data) method with validation
+      - Include delete(int $id) method
+      - Add protected beginTransaction() method
+      - Include protected commitTransaction() method
+      - Add protected rollbackTransaction() method
+      - Include protected dispatchEvent(string $event, $data) method
+      - Add protected validate(array $data, array $rules) method
+      - Include protected authorize(string $ability, $model = null) method
+      - Add protected sendNotification($user, $notification) method
+      - Include protected log(string $level, string $message, array $context = []) method
+      - Add protected manageCaching() methods
+      - Include detailed PHPDoc blocks for each method
+
+25.** @workspace generate code for following
+src/Services/CrudService.php**
+    - Purpose: Crud-specific service
+    - Dependencies: BaseService, RepositoryInterface
+    - Code Requirements:
+      - Create a class extending BaseService
+      - Override Crud methods with additional business logic
+      - Add batchCreate(array $items) method for bulk operations
+      - Include batchUpdate(array $items) method
+      - Add batchDelete(array $ids) method
+      - Include export(string $format, array $filters = []) method
+      - Add import(string $format, UploadedFile $file) method
+      - Include validateRelationships(array $data) method
+      - Add handleRelatedData(int $id, array $relations) method
+      - Include applyBusinessRules(array $data) method
+      - Add applyWorkflowTransition(int $id, string $transition) method
+      - Include createAuditTrail(string $action, int $id, array $before, array $after) method
+      - Add validateComplexRules(array $data) method
+      - Include specialized query methods for common business cases
+      - Add detailed PHPDoc blocks for each method
+
+## 6. Generator Components
+
+26.** @workspace generate code for following
+src/Generators/ModelGenerator.php**
+    - Purpose: Generate Eloquent models
+    - Dependencies: GeneratorInterface, StringHelper, RelationshipAnalyzer
+    - Code Requirements:
+      - Create a class implementing GeneratorInterface
+      - Implement constructor with StringHelper and RelationshipAnalyzer
+      - Add generate(string $table, array $options = []) method
+      - Include getClassName(string $table) method
+      - Add getNamespace() method
+      - Include getPath() method
+      - Add getStub() method to get model stub
+      - Include buildClass(string $table, array $options) method
+      - Add generateRelationshipMethods(array $relationships) method
+      - Include setupTableName(string $table, string $className) method
+      - Add setupPrimaryKey(string $primaryKey) method
+      - Include setupTimestamps(bool $timestamps) method
+      - Add setupSoftDeletes(bool $softDeletes) method
+      - Include generateFillableAttributes(array $columns) method
+      - Add generateGuardedAttributes(array $columns) method
+      - Include generateAccessors(array $columns) method
+      - Add generateMutators(array $columns) method
+      - Include setupModelEvents() method
+      - Add generateScopes(array $options) method
+      - Include generateCasts(array $columns) method
+      - Add setupFactoryReference() method
+      - Include setupTraits(array $options) method
+      - Add detailed PHPDoc blocks for each method
+
+27.** @workspace generate code for following
+src/Generators/MigrationGenerator.php**
+    - Purpose: Generate database migrations
+    - Dependencies: GeneratorInterface, StringHelper, DatabaseAnalyzer
+    - Code Requirements:
+      - Create a class implementing GeneratorInterface
+      - Implement constructor with StringHelper and DatabaseAnalyzer
+      - Add generate(string $table, array $options = []) method
+      - Include getClassName(string $table) method
+      - Add getPath() method
+      - Include getStub(string $action = 'create') method
+      - Add buildClass(string $table, string $action, array $options) method
+      - Include generateSchemaUp(string $table, array $columns, string $action) method
+      - Add generateSchemaDown(string $table, string $action) method
+      - Include generateColumnDefinitions(array $columns) method
+      - Add setupIndexesAndForeignKeys(string $table, array $columns) method
+      - Include implementTableCreation(string $table, array $columns) method
+      - Add implementTableAlteration(string $table, array $columns) method
+      - Include setupSoftDeleteColumn(array $options) method
+      - Add setupTimestampColumns(array $options) method
+      - Include setupPolymorphicFields(array $relationships) method
+      - Add implementUniqueConstraints(array $columns) method
+      - Include setupDataSeeding(array $options) method
+      - Add detailed PHPDoc blocks for each method
+
+28.** @workspace generate code for following
+src/Generators/FactoryGenerator.php**
+    - Purpose: Generate model factories
+    - Dependencies: GeneratorInterface, StringHelper, DatabaseAnalyzer
+    - Code Requirements:
+      - Create a class implementing GeneratorInterface
+      - Implement constructor with StringHelper and DatabaseAnalyzer
+      - Add generate(string $table, array $options = []) method
+      - Include getClassName(string $table) method
+      - Add getNamespace() method
+      - Include getPath() method
+      - Add getStub() method
+      - Include buildClass(string $table, array $options) method
+      - Add generateFakerData(array $columns) method
+      - Include setupRelationshipHandling(array $relationships) method
+      - Add generateStateMethods(array $states) method
+      - Include implementSequenceGeneration() method
+      - Add setupAfterCreatingHooks() method
+      - Include generateComplexAttributes(array $complexColumns) method
+      - Add createRecycleMethods() method
+      - Include implementCountMethods() method
+      - Add generateTraits(array $traits) method
+      - Include detailed PHPDoc blocks for each method
+
+29.** @workspace generate code for following
+src/Generators/SeederGenerator.php**
+    - Purpose: Generate database seeders
+    - Dependencies: GeneratorInterface, StringHelper, FactoryGenerator
+    - Code Requirements:
+      - Create a class implementing GeneratorInterface
+      - Implement constructor with StringHelper
+      - Add generate(string $table, array $options = []) method
+      - Include getClassName(string $table) method
+      - Add getNamespace() method
+      - Include getPath() method
+      - Add getStub() method
+      - Include buildClass(string $table, array $options) method
+      - Add implementFactoryUsage(string $modelClass) method
+      - Include setupRelationshipSeeding(array $relationships) method
+      - Add implementTransactionHandling() method
+      - Include setupDependencyManagement(array $dependencies) method
+      - Add generateTruncationMethods() method
+      - Include setupProductionVsDevelopmentData(bool $isProduction) method
+      - Add implementRandomizationOptions() method
+      - Include generateStaticDataSeeding(array $staticData) method
+      - Add createDemonstrationData(array $demoData) method
+      - Include detailed PHPDoc blocks for each method
+
+30.** @workspace generate code for following
+src/Generators/RepositoryGenerator.php**
+    - Purpose: Generate repository classes
+    - Dependencies: GeneratorInterface, StringHelper, ModelGenerator
+    - Code Requirements:
+      - Create a class implementing GeneratorInterface
+      - Implement constructor with StringHelper
+      - Add generate(string $table, array $options = []) method
+      - Include getClassName(string $table) method
+      - Add getNamespace() method
+      - Include getPath() method
+      - Add getStub() method to get repository stub
+      - Include buildClass(string $table, array $options) method
+      - Add generateInterface(string $table, array $options) method
+      - Include generateImplementation(string $table, array $options) method
+      - Add setupModelReference(string $modelClass) method
+      - Include generateCrudMethods() method
+      - Add generateQueryScopeMethods(array $scopes) method
+      - Include setupCachingLayer(bool $enableCaching) method
+      - Add generateTransactionMethods() method
+      - Include generatePaginationMethods() method
+      - Add generateOrderingMethods() method
+      - Include generateFilteringMethods() method
+      - Add setupRelationshipLoading() method
+      - Include setupEventDispatching() method
+      - Add detailed PHPDoc blocks for each method
+
+31.** @workspace generate code for following
+src/Generators/ServiceGenerator.php**
+    - Purpose: Generate service classes
+    - Dependencies: GeneratorInterface, StringHelper, RepositoryGenerator
+    - Code Requirements:
+      - Create a class implementing GeneratorInterface
+      - Implement constructor with StringHelper
+      - Add generate(string $table, array $options = []) method
+      - Include getClassName(string $table) method
+      - Add getNamespace() method
+      - Include getPath() method
+      - Add getStub() method to get service stub
+      - Include buildClass(string $table, array $options) method
+      - Add setupRepositoryInjection(string $repositoryClass) method
+      - Include generateBusinessLogicMethods(array $options) method
+      - Add setupValidationHandling() method
+      - Include setupTransactionCoordination() method
+      - Add setupEventDispatching() method
+      - Include generateServiceProvider(string $table) method
+      - Add setupErrorHandling() method
+      - Include setupNotificationSending() method
+      - Add generateLoggingFunctionality() method
+      - Include setupCacheManagement() method
+      - Add detailed PHPDoc blocks for each method
+
+32.** @workspace generate code for following
+src/Generators/RequestGenerator.php**
+    - Purpose: Generate form request classes
+    - Dependencies: GeneratorInterface, StringHelper, DatabaseAnalyzer
+    - Code Requirements:
+      - Create a class implementing GeneratorInterface
+      - Implement constructor with StringHelper and DatabaseAnalyzer
+      - Add generate(string $table, array $options = []) method
+      - Include getClassName(string $table, string $action = '') method
+      - Add getNamespace() method
+      - Include getPath() method
+      - Add getStub() method to get request stub
+      - Include buildClass(string $table, string $action, array $options) method
+      - Add setupAuthorizationMethod() method
+      - Include generateValidationRules(string $table, string $action, array $columns) method
+      - Add generateCustomErrorMessages(array $rules) method
+      - Include setupCustomValidators() method
+      - Add generateValidationAttributes(array $columns) method
+      - Include setupAfterValidationHooks() method
+      - Add generatePrepareForValidationMethod() method
+      - Include setupSanitization() method
+      - Add generateRuleObjects(array $complexRules) method
+      - Include detailed PHPDoc blocks for each method
+
+33.** @workspace generate code for following
+src/Generators/PolicyGenerator.php**
+    - Purpose: Generate authorization policies
+    - Dependencies: GeneratorInterface, StringHelper, ModelGenerator
+    - Code Requirements:
+      - Create a class implementing GeneratorInterface
+      - Implement constructor with StringHelper
+      - Add generate(string $table, array $options = []) method
+      - Include getClassName(string $table) method
+      - Add getNamespace() method
+      - Include getPath() method
+      - Add getStub() method
+      - Include buildClass(string $table, array $options) method
+      - Add generateAuthorizationMethods() method
+      - Include setupRoleBasedAuthorization(array $roles) method
+      - Add generateOwnershipChecks(string $table) method
+      - Include implementAbilityMapping() method
+      - Add generatePolicyProvider() method
+      - Include setupPolicyRegistration() method
+      - Add implementBeforeAndAfterHooks() method
+      - Include generateCustomAbilityMethods(array $abilities) method
+      - Add generateResourceSpecificPolicies(string $table) method
+      - Include detailed PHPDoc blocks for each method
+
+34.** @workspace generate code for following
+src/Generators/ControllerGenerator.php**
+    - Purpose: Generate controller classes
+    - Dependencies: GeneratorInterface, StringHelper, ServiceGenerator, RequestGenerator
+    - Code Requirements:
+      - Create a class implementing GeneratorInterface
+      - Implement constructor with StringHelper, ServiceGenerator, RequestGenerator
+      - Add generate(string $table, array $options = []) method
+      - Include getClassName(string $table) method
+      - Add getNamespace() method
+      - Include getPath() method
+      - Add getStub() method to get controller stub
+      - Include buildClass(string $table, array $options) method
+      - Add setupServiceInjection(string $serviceClass) method
+      - Include setupRequestValidation(array $requestClasses) method
+      - Add setupAuthorizationChecks() method
+      - Include generateViewRenderingMethods() method
+      - Add setupFormProcessing() method
+      - Include generateRedirectAndResponseLogic() method
+      - Add setupFlashMessages() method
+      - Include generateCrudMethods() method
+      - Add setupTransactionHandling() method
+      - Include setupErrorHandling() method
+      - Add detailed PHPDoc blocks for each method
+
+35.** @workspace generate code for following
+src/Generators/ResourceGenerator.php**
+    - Purpose: Generate API resources
+    - Dependencies: GeneratorInterface, StringHelper, ModelGenerator, RelationshipAnalyzer
+    - Code Requirements:
+      - Create a class implementing GeneratorInterface
+      - Implement constructor with StringHelper and RelationshipAnalyzer
+      - Add generate(string $table, array $options = []) method
+      - Include getClassName(string $table) method
+      - Add getNamespace() method
+      - Include getPath() method
+      - Add getStub(string $type = 'resource') method
+      - Include buildClass(string $table, array $options) method
+      - Add implementDataTransformation(array $columns) method
+      - Include setupRelationshipInclusion(array $relationships) method
+      - Add generateConditionalFields(array $columns) method
+      - Include implementMetaData() method
+      - Add setupPaginationHandling() method
+      - Include generateResourceCollection(string $table) method
+      - Add implementLinkGeneration() method
+      - Include setupVersioning(array $options) method
+      - Add implementCustomSerialization(array $options) method
+      - Include detailed PHPDoc blocks for each method
+
+36.** @workspace generate code for following
+src/Generators/RouteGenerator.php**
+    - Purpose: Generate web and API routes
+    - Dependencies: GeneratorInterface, StringHelper, ControllerGenerator
+    - Code Requirements:
+      - Create a class implementing GeneratorInterface
+      - Implement constructor with StringHelper and ControllerGenerator
+      - Add generate(string $table, array $options = []) method
+      - Include getPath(string $type = 'web') method
+      - Add getStub(string $type = 'web') method
+      - Include buildRoutes(string $table, string $type, array $options) method
+      - Add generateResourcefulRoutes(string $table, string $controller) method
+      - Include setupNestedRoutes(string $table, array $relationships) method
+      - Add implementApiVersioning(array $options) method
+      - Include setupRouteModelBinding(string $table) method
+      - Add setupRouteNaming(string $table, string $type) method
+      - Include assignMiddleware(string $type, array $middleware) method
+      - Add createRouteGroups(array $options) method
+      - Include generateCustomRouteMethods(string $table, array $customMethods) method
+      - Add setupApiPrefixAndDomain(array $options) method
+      - Include setupRouteCaching() method
+      - Add detailed PHPDoc blocks for each method
+
+37.** @workspace generate code for following
+src/Generators/ObserverGenerator.php**
+    - Purpose: Generate model observers
+    - Dependencies: GeneratorInterface, StringHelper, ModelGenerator
+    - Code Requirements:
+      - Create a class implementing GeneratorInterface
+      - Implement constructor with StringHelper and ModelGenerator
+      - Add generate(string $table, array $options = []) method
+      - Include getClassName(string $table) method
+      - Add getNamespace() method
+      - Include getPath() method
+      - Add getStub() method
+      - Include buildClass(string $table, array $options) method
+      - Add generateLifecycleMethods() method
+      - Include setupEventDispatching() method
+      - Add setupCacheInvalidation() method
+      - Include implementActivityLogging() method
+      - Add setupRelationshipHandling(array $relationships) method
+      - Include setupNotificationSending() method
+      - Add generateValidationMethods() method
+      - Include implementSearchIndexing(array $options) method
+      - Add setupAuditLogging() method
+      - Include detailed PHPDoc blocks for each method
+
+38.** @workspace generate code for following
+src/Generators/EventGenerator.php**
+    - Purpose: Generate event classes
+    - Dependencies: GeneratorInterface, StringHelper, ModelGenerator
+    - Code Requirements:
+      - Create a class implementing GeneratorInterface
+      - Implement constructor with StringHelper and ModelGenerator
+      - Add generate(string $table, array $options = []) method
+      - Include getClassName(string $table, string $action) method
+      - Add getNamespace() method
+      - Include getPath() method
+      - Add getStub(bool $shouldBroadcast = false) method
+      - Include buildClass(string $table, string $action, array $options) method
+      - Add implementShouldBroadcast(array $options) method
+      - Include setupDataProperties(string $table, string $action) method
+      - Add generateSerializationMethods() method
+      - Include implementBroadcastingChannel(array $options) method
+      - Add generateEventConstructor(string $table) method
+      - Include setupQueueSpecification(array $options) method
+      - Add customizePayload(array $options) method
+      - Include implementEventInterfaces(array $interfaces) method
+      - Add setupEventDispatching() method
+      - Include detailed PHPDoc blocks for each method
+
+39.** @workspace generate code for following
+src/Generators/ListenerGenerator.php**
+    - Purpose: Generate event listeners
+    - Dependencies: GeneratorInterface, StringHelper, EventGenerator
+    - Code Requirements:
+      - Create a class implementing GeneratorInterface
+      - Implement constructor with StringHelper and EventGenerator
+      - Add generate(string $table, array $options = []) method
+      - Include getClassName(string $table, string $event) method
+      - Add getNamespace() method
+      - Include getPath() method
+      - Add getStub(bool $queued = false) method
+      - Include buildClass(string $table, string $event, array $options) method
+      - Add generateHandleMethod(string $event) method
+      - Include setupQueueSpecification(array $options) method
+      - Add implementFailureHandling() method
+      - Include setupRetryConfiguration(array $options) method
+      - Add generateListenerRegistration() method
+      - Include setupDependencyInjection(array $dependencies) method
+      - Add assignMiddleware(array $middleware) method
+      - Include implementConditionalProcessing() method
+      - Add generateEventSubscriberOptions(array $events) method
+      - Include detailed PHPDoc blocks for each method
+
+40.** @workspace generate code for following
+src/Generators/JobGenerator.php**
+    - Purpose: Generate queue jobs
+    - Dependencies: GeneratorInterface, StringHelper, ModelGenerator
+    - Code Requirements:
+      - Create a class implementing GeneratorInterface
+      - Implement constructor with StringHelper and ModelGenerator
+      - Add generate(string $table, array $options = []) method
+      - Include getClassName(string $table, string $action) method
+      - Add getNamespace() method
+      - Include getPath() method
+      - Add getStub() method
+      - Include buildClass(string $table, string $action, array $options) method
+      - Add implementShouldQueueInterface() method
+      - Include setupQueueNameAndConnection(array $options) method
+      - Add implementRetryConfiguration(array $options) method
+      - Include setupTimeoutSettings(array $options) method
+      - Add assignMiddleware(array $middleware) method
+      - Include setupBatchHandling(array $options) method
+      - Add implementFailureHandling() method
+      - Include setupProgressTracking() method
+      - Add createChainedJobs(array $chainedJobs) method
+      - Include detailed PHPDoc blocks for each method
+
+41.** @workspace generate code for following
+src/Generators/ViewGenerator.php**
+    - Purpose: Generate Vuexy-themed blade views
+    - Dependencies: GeneratorInterface, StringHelper, RelationshipAnalyzer, ModelGenerator
+    - Code Requirements:
+      - Create a class implementing GeneratorInterface
+      - Implement constructor with StringHelper and RelationshipAnalyzer
+      - Add generate(string $table, array $options = []) method
+      - Include getViewName(string $table, string $view) method
+      - Add getPath(string $view) method
+      - Include getStub(string $view) method to get view stubs
+      - Add buildView(string $table, string $view, array $options) method
+      - Include generateIndexView(string $table, array $columns, array $options) method
+      - Add generateCreateView(string $table, array $columns, array $options) method
+      - Include generateEditView(string $table, array $columns, array $options) method
+      - Add generateShowView(string $table, array $columns, array $options) method
+      - Include generateFormPartials(string $table, array $columns) method
+      - Add setupModalOperations(string $table) method
+      - Include setupVuexyCardLayouts(string $table, array $options) method
+      - Add generateFilterComponents(string $table, array $columns) method
+      - Include setupPaginationControls() method
+      - Add generateBreadcrumbNavigation(string $table) method
+      - Include setupExportButtons(string $table) method
+      - Add setupBulkActionControls(string $table) method
+      - Include generateRelationshipDisplayComponents(string $table, array $relationships) method
+      - Add detailed PHPDoc blocks for each method
+
+## 7. Vuexy Theme Stubs
+
+42.** @workspace generate code for following
+src/stubs/vuexy/layout.stub**
+    - Purpose: Master layout template
+    - Code Requirements:
+      - Create a Blade template stub for Vuexy master layout
+      - Include HTML5 doctype and responsive meta tags
+      - Add CSS includes for Vuexy theme assets
+      - Include JS script loading (deferred)
+      - Add navigation structure with configurable items
+      - Include sidebar configuration with collapsible menu
+      - Add header with search, notifications, user menu
+      - Include footer with copyright info
+      - Add content area with yield directives
+      - Include flash message component
+      - Add breadcrumb component
+      - Include modal container for dynamic modals
+      - Add theme switcher (light/dark mode)
+      - Include responsive design breakpoints
+
+43.** @workspace generate code for following
+src/stubs/vuexy/views/index.blade.stub**
+    - Purpose: List view with data table
+    - Code Requirements:
+      - Create a Blade template stub for index/list view
+      - Include page title and breadcrumb
+      - Add create button with permissions check
+      - Include search and filter components
+      - Add data table with sortable columns
+      - Include pagination controls
+      - Add row actions (view, edit, delete)
+      - Include bulk action controls
+      - Add export buttons
+      - Include refresh button
+      - Add responsive handling for mobile
+      - Include empty state message
+      - Add custom column rendering options
+      - Include inline editing capability
+      - Add row expansion for details
+
+44.** @workspace generate code for following
+src/stubs/vuexy/views/create.blade.stub**
+    - Purpose: Create form with relationships
+    - Code Requirements:
+      - Create a Blade template stub for create form
+      - Include page title and breadcrumb
+      - Add form with CSRF protection
+      - Include input fields based on table columns
+      - Add relationship fields (selects, multi-selects)
+      - Include file upload components
+      - Add rich text editors for text fields
+      - Include date/time pickers
+      - Add validation error display
+      - Include conditional fields
+      - Add multi-step wizard for complex forms
+      - Include form sections/tabs for organization
+      - Add save/cancel buttons
+      - Include client-side validation
+
+45.** @workspace generate code for following
+src/stubs/vuexy/views/edit.blade.stub**
+    - Purpose: Edit form with validation
+    - Code Requirements:
+      - Create a Blade template stub for edit form
+      - Include page title and breadcrumb
+      - Add form with CSRF protection and method spoofing
+      - Include input fields with current values
+      - Add relationship fields with selections
+      - Include file upload with existing files
+      - Add version history toggle/display
+      - Include validation error display
+      - Add conditional fields based on values
+      - Include dependent dropdown logic
+      - Add complex field types (JSON editor, etc.)
+      - Include save options (save, save and continue)
+      - Add preview functionality
+      - Include field permissions/restrictions
+
+46.** @workspace generate code for following
+src/stubs/vuexy/views/show.blade.stub**
+    - Purpose: Detail view with related data
+    - Code Requirements:
+      - Create a Blade template stub for detail view
+      - Include page title and breadcrumb
+      - Add edit/delete buttons with permissions check
+      - Include field display with labels
+      - Add relationship data displays
+      - Include tabs for organizing sections
+      - Add history/timeline component
+      - Include activity log display
+      - Add comments section
+      - Include related items lists
+      - Add export options
+      - Include back button
+      - Add responsive layout for mobile
+      - Include media display (images, files)
+
+47.** @workspace generate code for following
+src/stubs/vuexy/components/data-table.stub**
+    - Purpose: Advanced data table component
+    - Code Requirements:
+      - Create a Blade component stub for data tables
+      - Include component class with properties
+      - Add table with thead and tbody structure
+      - Include column configuration options
+      - Add sorting functionality with indicators
+      - Include pagination integration
+      - Add checkbox for row selection
+      - Include action buttons column
+      - Add inline editing capability
+      - Include row expansion component
+      - Add custom rendering slots
+      - Include empty state handling
+      - Add loading state
+      - Include responsive handling
+      - Add accessibility attributes
+
+48.** @workspace generate code for following
+src/stubs/vuexy/components/modal.stub**
+    - Purpose: Modal dialog component
+    - Code Requirements:
+      - Create a Blade component stub for modals
+      - Include component class with properties
+      - Add modal container with backdrop
+      - Include sizing options (sm, md, lg, xl)
+      - Add animation/transition effects
+      - Include header with title and close button
+      - Add footer with action buttons
+      - Include backdrop click handling
+      - Add draggable modal option
+      - Include z-index handling for stacking
+      - Add keyboard navigation handling
+      - Include focus trapping
+      - Add dynamic content area
+      - Include loading state
+      - Add accessibility attributes
+
+49.** @workspace generate code for following
+src/stubs/vuexy/components/filter.stub**
+    - Purpose: Advanced filtering component
+    - Code Requirements:
+      - Create a Blade component stub for filters
+      - Include component class with properties
+      - Add filter form with submit/reset
+      - Include field selector dropdown
+      - Add operator selection (equals, contains, etc.)
+      - Include value input based on field type
+      - Add date range picker for dates
+      - Include filter groups with AND/OR logic
+      - Add save favorite filters option
+      - Include clear filters button
+      - Add complex condition builder
+      - Include search integration
+      - Add collapsible/expandable interface
+      - Include mobile-friendly design
+      - Add accessibility attributes
+
+50.** @workspace generate code for following
+src/stubs/vuexy/components/form.stub**
+    - Purpose: Dynamic form generation
+    - Code Requirements:
+      - Create a Blade component stub for forms
+      - Include component class with properties
+      - Add form container with configurable method/action
+      - Include field components for different types
+      - Add validation integration
+      - Include field grouping capability
+      - Add conditional display logic
+      - Include help text and tooltips
+      - Add placeholder handling
+      - Include label customization
+      - Add required field marking
+      - Include field layouts (horizontal/vertical)
+      - Add responsive grid support
+      - Include accessibility attributes
+      - Add CSRF protection
+
+51.** @workspace generate code for following
+src/stubs/vuexy/components/nested-form.stub**
+    - Purpose: Form component for related data
+    - Code Requirements:
+      - Create a Blade component stub for nested forms
+      - Include component class with properties
+      - Add container for repeated items
+      - Include add/remove item buttons
+      - Add item template with fields
+      - Include validation for nested items
+      - Add order/sort controls
+      - Include collapse/expand functionality
+      - Add template generation for new items
+      - Include relationship binding
+      - Add validation error propagation
+      - Include dependent field handling
+      - Add inheritance pattern support
+      - Include limit controls (min/max items)
+      - Add accessibility attributes
+
+52.** @workspace generate code for following
+src/stubs/vuexy/components/card.stub**
+    - Purpose: Card UI component
+    - Code Requirements:
+      - Create a Blade component stub for cards
+      - Include component class with properties
+      - Add card container with configurable classes
+      - Include header with title and actions
+      - Add body content area
+      - Include footer section
+      - Add action buttons
+      - Include collapsible functionality
+      - Add loading state with spinner
+      - Include border and shadow options
+      - Add color scheme variants
+      - Include icon integration
+      - Add card group capability
+      - Include draggable option
+      - Add accessibility attributes
+
+53.** @workspace generate code for following
+src/stubs/vuexy/components/tabs.stub**
+    - Purpose: Tab interface component
+    - Code Requirements:
+      - Create a Blade component stub for tabs
+      - Include component class with properties
+      - Add tab navigation container
+      - Include tab buttons with active states
+      - Add tab content panels
+      - Include vertical tabs option
+      - Add pill style variant
+      - Include wizard style progression
+      - Add dynamic tab creation
+      - Include lazy loading option
+      - Add icon support in tabs
+      - Include responsive handling
+      - Add overflow handling for many tabs
+      - Include accessibility attributes (ARIA)
+      - Add keyboard navigation support
+
+54.** @workspace generate code for following
+src/stubs/vuexy/components/file-upload.stub**
+    - Purpose: File upload component
+    - Code Requirements:
+      - Create a Blade component stub for file uploads
+      - Include component class with properties
+      - Add upload area with drag-drop support
+      - Include file input with browse button
+      - Add preview functionality for images
+      - Include progress indicators
+      - Add validation for file types
+      - Include multi-file upload support
+      - Add image cropping option
+      - Include file type filtering
+      - Add size limitation handling
+      - Include upload queue management
+      - Add delete/remove functionality
+      - Include error handling
+      - Add accessibility attributes
+
+55.** @workspace generate code for following
+src/stubs/vuexy/components/charts.stub**
+    - Purpose: Data visualization component
+    - Code Requirements:
+      - Create a Blade component stub for charts
+      - Include component class with properties
+      - Add chart container with responsive sizing
+      - Include data binding attributes
+      - Add support for multiple chart types
+      - Include axis configuration options
+      - Add legend customization
+      - Include tooltip configuration
+      - Add animation options
+      - Include color scheme settings
+      - Add drill-down capability
+      - Include export options
+      - Add empty state handling
+      - Include loading state
+      - Add accessibility attributes
+
+56.** @workspace generate code for following
+src/stubs/vuexy/components/export-buttons.stub**
+    - Purpose: Export functionality component
+    - Code Requirements:
+      - Create a Blade component stub for export buttons
+      - Include component class with properties
+      - Add button group for export options
+      - Include format selection (CSV, Excel, PDF)
+      - Add column selection modal
+      - Include filename customization
+      - Add custom header/footer options
+      - Include styling configuration
+      - Add batch export capability
+      - Include password protection option
+      - Add background processing for large exports
+      - Include notification on completion
+      - Add accessibility attributes
+      - Include keyboard shortcuts
+
+57.** @workspace generate code for following
+src/stubs/vuexy/components/bulk-actions.stub**
+    - Purpose: Batch operation component
+    - Code Requirements:
+      - Create a Blade component stub for bulk actions
+      - Include component class with properties
+      - Add action dropdown/button group
+      - Include selection counter display
+      - Add confirmation dialog integration
+      - Include progress indicator for processing
+      - Add result reporting
+      - Include partial completion handling
+      - Add error handling with details
+      - Include transaction management
+      - Add undo functionality
+      - Include permission checking
+      - Add accessibility attributes
+      - Include keyboard shortcuts
+
+## 8. Enterprise Feature Components
+
+58.** @workspace generate code for following
+src/Features/AuditTrail/AuditManager.php**
+    - Purpose: Audit logging system
+    - Dependencies: BaseService
+    - Code Requirements:
+      - Create a class for audit trail management
+      - Implement constructor with model and user repository injection
+      - Add createAuditRecord(string $action, $model, array $changes) method
+      - Include trackUser() method
+      - Add detectChanges(array $before, array $after) method
+      - Include logIpAndAgent() method
+      - Add implementVersioning() method
+      - Include createAuditTimeline(int $modelId) method
+      - Add setupRestoration() method
+      - Include addSearchAndFiltering() method
+      - Add implementRetentionPolicies(int $days) method
+      - Include createExportFunctionality(string $format) method
+      - Add detailed PHPDoc blocks for each method
+
+59.** @workspace generate code for following
+src/Features/RBAC/RoleManager.php**
+    - Purpose: Role-based access control
+    - Dependencies: BaseService
+    - Code Requirements:
+      - Create a class for role management
+      - Implement constructor with necessary repositories
+      - Add createRole(string $name, array $permissions) method
+      - Include assignPermissions(int $roleId, array $permissions) method
+      - Add setupInheritance(int $childRoleId, int $parentRoleId) method
+      - Include assignUserRole(int $userId, int $roleId) method
+      - Add implementContextBasedRoles() method
+      - Include checkPermission(int $userId, string $permission, $context = null) method
+      - Add setupRoleHierarchy() method
+      - Include addDynamicPermissions() method
+      - Add implementUiIntegration() method
+      - Include synchronizeWithExternalSystems(array $mapping) method
+      - Add detailed PHPDoc blocks for each method
+
+60.** @workspace generate code for following
+src/Features/Versioning/VersionManager.php**
+    - Purpose: Data versioning system
+    - Dependencies: BaseService
+    - Code Requirements:
+      - Create a class for version management
+      - Implement constructor with necessary repositories
+      - Add createVersionHistory(int $modelId, array $data) method
+      - Include implementDiffVisualization(int $versionId, int $compareToId) method
+      - Add setupRestoration(int $modelId, int $versionId) method
+      - Include trackAuthor(int $versionId, int $userId) method
+      - Add implementVersionNotes(int $versionId, string $notes) method
+      - Include createBranching(int $versionId, string $branchName) method
+      - Add setupMerging(int $branchId, int $targetBranchId) method
+      - Include addConflictResolution() method
+      - Add implementRetentionPolicies(int $days) method
+      - Include createApprovalWorkflows() method
+      - Add detailed PHPDoc blocks for each method
+
+61.** @workspace generate code for following
+src/Features/Export/ExportManager.php**
+    - Purpose: Data export functionality
+    - Dependencies: BaseService
+    - Code Requirements:
+      - Create a class for export management
+      - Implement constructor with necessary services
+      - Add exportToCsv(array $data, array $options = []) method
+      - Include exportToExcel(array $data, array $options = []) method
+      - Add exportToPdf(array $data, array $options = []) method
+      - Include setupTemplateCustomization(string $format, $template) method
+      - Add addColumnSelection(array $columns) method
+      - Include implementFiltersAndSorting(array $filters, array $sorts) method
+      - Add createBackgroundProcessing() method
+      - Include setupNotification() method
+      - Add implementScheduling(string $frequency, array $options) method
+      - Include setupSecurity(array $options) method
+      - Add createStyleCustomization(array $styles) method
+      - Include setupHeaderFooterOptions(array $options) method
+      - Add detailed PHPDoc blocks for each method
+
+62.** @workspace generate code for following
+src/Features/Import/ImportManager.php**
+    - Purpose: Data import functionality
+    - Dependencies: BaseService
+    - Code Requirements:
+      - Create a class for import management
+      - Implement constructor with necessary services
+      - Add importFromCsv(UploadedFile $file, array $options = []) method
+      - Include importFromExcel(UploadedFile $file, array $options = []) method
+      - Add setupValidation(array $rules) method
+      - Include setupMapping(array $columnMapping) method
+      - Add handleErrors(array $errors) method
+      - Include trackProgress(callable $callback) method
+      - Add createPreview(UploadedFile $file, int $rows = 10) method
+      - Include setupConflictResolution(string $strategy) method
+      - Add implementBatchProcessing(int $batchSize) method
+      - Include setupRollback() method
+      - Add createLogging() method
+      - Include detailed PHPDoc blocks for each method
+
+63.** @workspace generate code for following
+src/Features/Notifications/NotificationManager.php**
+    - Purpose: Notification templates
+    - Dependencies: BaseService
+    - Code Requirements:
+      - Create a class for notification management
+      - Implement constructor with necessary services
+      - Add createTemplate(string $name, array $channels, string $content) method
+      - Include setupChannelHandling(array $channels) method
+      - Add configurePlaceholders(array $placeholders) method
+      - Include scheduleNotification(string $templateId, array $recipients, Carbon $sendAt) method
+      - Add implementGrouping(array $notifications) method
+      - Include setupPersonalization(array $userData) method
+      - Add configureTracking() method
+      - Include setupThrottling(int $limit, string $period) method
+      - Add managePreferences(int $userId, array $preferences) method
+      - Include createTestingTools() method
+      - Add detailed PHPDoc blocks for each method
+
+64.** @workspace generate code for following
+src/Features/Internationalization/TranslationManager.php**
+    - Purpose: Multilingual support
+    - Dependencies: BaseService
+    - Code Requirements:
+      - Create a class for translation management
+      - Implement constructor with necessary services
+      - Add manageTranslations(string $group, array $translations) method
+      - Include detectLanguage(Request $request) method
+      - Add configureFallbacks(array $fallbacks) method
+      - Include setupTranslationMemory() method
+      - Add handlePluralForms(string $key, array $counts) method
+      - Include implementContextBasedTranslation() method
+      - Add configureRtlSupport() method
+      - Include setupAutoTranslation() method
+      - Add handleMissingTranslations() method
+      - Include importExportTranslations(string $format) method
+      - Add detailed PHPDoc blocks for each method
+
+65.** @workspace generate code for following
+src/Features/BatchOperations/BatchManager.php**
+    - Purpose: Batch operation handling
+    - Dependencies: BaseService
+    - Code Requirements:
+      - Create a class for batch processing
+      - Implement constructor with necessary services
+      - Add processBatchJob(string $operation, array $items) method
+      - Include trackProgress(int $total, int $processed) method
+      - Add handleErrors(array $errors) method
+      - Include managePartialCompletion() method
+      - Add setupTransactionManagement() method
+      - Include configureNotifications() method
+      - Add implementScheduling(Carbon $scheduledAt) method
+      - Include setupParallelization(int $processes) method
+      - Add configureRateLimiting(int $limit, string $period) method
+      - Include implementRetryLogic(int $attempts, int $backoff) method
+      - Add detailed PHPDoc blocks for each method
+
+66.** @workspace generate code for following
+src/Features/ActivityLog/ActivityManager.php**
+    - Purpose: User activity logging
+    - Dependencies: BaseService
+    - Code Requirements:
+      - Create a class for activity logging
+      - Implement constructor with necessary services
+      - Add recordActivity(string $action, int $userId, $subject = null) method
+      - Include trackUser(Request $request) method
+      - Add categorizeActivities(array $categories) method
+      - Include storeContextualData(array $context) method
+      - Add createTimelineVisualization(int $userId) method
+      - Include setupFiltering(array $filters) method
+      - Add configureRetention(int $days) method
+      - Include implementExport(string $format) method
+      - Add setupAnalytics() method
+      - Include configureAlerting(array $triggers) method
+      - Add detailed PHPDoc blocks for each method
+
+67.** @workspace generate code for following
+src/Features/SoftDeletes/TrashManager.php**
+    - Purpose: Soft deletion management
+    - Dependencies: BaseService
+    - Code Requirements:
+      - Create a class for trash management
+      - Implement constructor with necessary services
+      - Add manageTrash(string $modelType) method
+      - Include restoreItem(int $id) method
+      - Add configureCascadeDeletion() method
+      - Include permanentlyDeleteItem(int $id) method
+      - Add setupRetentionPolicies(int $days) method
+      - Include processBatchOperations(string $action, array $ids) method
+      - Add handleRelationships() method
+      - Include implementSearchAndFiltering() method
+      - Add emptyTrash(string $modelType = null) method
+      - Include configureNotifications() method
+      - Add detailed PHPDoc blocks for each method
+
+## 9. Command System
+
+68.** @workspace generate code for following
+src/Commands/GenerateCrudCommand.php**
+    - Purpose: Primary Crud generation command
+    - Dependencies: All Generator classes, DatabaseAnalyzer, RelationshipAnalyzer
+    - Code Requirements:
+      - Create a class extending Illuminate\Console\Command
+      - Set command signature with table name and options
+      - Set command description
+      - Implement constructor with all generator classes and analyzers
+      - Add handle() method as main entry point
+      - Include getTableName() method for input handling
+      - Add analyzeDatabase(string $table) method
+      - Include analyzeRelationships(string $table) method
+      - Add coordinateGenerators(string $table, array $options) method
+      - Include createInteractiveCli() method
+      - Add handleCustomization(array $options) method
+      - Include processBatchGeneration(array $tables) method
+      - Add handleComponentSkipping(array $options) method
+      - Include showProgressAndErrors() method
+      - Add implementDryRun(bool $dryRun) method
+      - Include detailed PHPDoc blocks for each method
+
+69.** @workspace generate code for following
+src/Commands/GenerateApiCommand.php**
+    - Purpose: API-specific generation command
+    - Dependencies: ResourceGenerator, ControllerGenerator, RouteGenerator
+    - Code Requirements:
+      - Create a class extending Illuminate\Console\Command
+      - Set command signature with table name and options
+      - Set command description
+      - Implement constructor with necessary generator classes
+      - Add handle() method as main entry point
+      - Include generateApiController(string $table) method
+      - Add generateApiResource(string $table) method
+      - Include generateApiDocumentation(string $table) method
+      - Add setupApiVersioning(array $options) method
+      - Include configureAuthentication(array $options) method
+      - Add setupRateLimitingAndCaching(array $options) method
+      - Include generateApiValidation(string $table) method
+      - Add createApiResponseTransformers(string $table) method
+      - Include handleMultipleVersions(array $versions) method
+      - Add detailed PHPDoc blocks for each method
+
+70.** @workspace generate code for following
+src/Commands/GenerateRelationshipsCommand.php**
+    - Purpose: Relationship-focused generation
+    - Dependencies: RelationshipAnalyzer, ModelGenerator, ControllerGenerator, RouteGenerator
+    - Code Requirements:
+      - Create a class extending Illuminate\Console\Command
+      - Set command signature with table name and options
+      - Set command description
+      - Implement constructor with relationship analyzers and generators
+      - Add handle() method as main entry point
+      - Include analyzeTableRelationships(string $table) method
+      - Add generateRelationshipMethods(string $table, array $relationships) method
+      - Include createNestedResourceControllers(string $table, array $relationships) method
+      - Add setupNestedRoutes(string $table, array $relationships) method
+      - Include generateRelationshipValidationRules(string $table, array $relationships) method
+      - Add createRelationshipForms(string $table, array $relationships) method
+      - Include handlePolymorphicRelationships(string $table, array $relationships) method
+      - Add detailed PHPDoc blocks for each method
+
+71.** @workspace generate code for following
+src/Commands/GenerateTestsCommand.php**
+    - Purpose: Test suite generation
+    - Dependencies: ModelGenerator, ControllerGenerator, RepositoryGenerator, ServiceGenerator
+    - Code Requirements:
+      - Create a class extending Illuminate\Console\Command
+      - Set command signature with table name and options
+      - Set command description
+      - Implement constructor with necessary generators
+      - Add handle() method as main entry point
+      - Include generateModelTests(string $table) method
+      - Add generateServiceTests(string $table) method
+      - Include generateControllerTests(string $table) method
+      - Add setupBrowserTests(string $table) method
+      - Include createFactoryClasses(string $table) method
+      - Add generateSeederTests(string $table) method
+      - Include setupApiTesting(string $table) method
+      - Add createValidationRuleTests(string $table) method
+      - Include detailed PHPDoc blocks for each method
+
+72.** @workspace generate code for following
+src/Commands/GenerateDocumentationCommand.php**
+    - Purpose: Documentation generation
+    - Dependencies: All Generator classes, DatabaseAnalyzer, RelationshipAnalyzer
+    - Code Requirements:
+      - Create a class extending Illuminate\Console\Command
+      - Set command signature with table name and options
+      - Set command description
+      - Implement constructor with necessary services
+      - Add handle() method as main entry point
+      - Include generateMarkdownDocumentation(string $table) method
+      - Add createApiDocumentation(string $table) method
+      - Include documentDatabaseSchema(string $table) method
+      - Add createRelationshipDiagrams(string $table) method
+      - Include documentCrudOperations(string $table) method
+      - Add documentValidationRules(string $table) method
+      - Include createUiUserGuides(string $table) method
+      - Add detailed PHPDoc blocks for each method
+
+## 10. Documentation Files
+
+73.** @workspace generate code for following
+docs/index.md**
+    - Purpose: Main documentation
+    - Code Requirements:
+      - Create a Markdown file with package overview
+      - Include navigation links to other documentation sections
+      - Add search functionality explanations
+      - Include version information and compatibility
+      - Add example usage scenarios
+      - Include quick start guide
+      - Add framework integration instructions
+      - Include screenshots of generated components
+      - Add FAQ section with common questions
+      - Include community links and support information
+
+74.** @workspace generate code for following
+docs/installation.md**
+    - Purpose: Installation guide
+    - Code Requirements:
+      - Create a Markdown file with step-by-step installation
+      - Include system requirements
+      - Add troubleshooting common installation issues
+      - Include version compatibility information
+      - Add configuration after installation
+      - Include asset publishing instructions
+      - Add database setup requirements
+      - Include verification steps
+      - Add upgrade guide for different versions
+      - Include uninstallation instructions if needed
+
+75.** @workspace generate code for following
+docs/configuration.md**
+    - Purpose: Configuration options
+    - Code Requirements:
+      - Create a Markdown file documenting all config options
+      - Include sample configurations for common scenarios
+      - Add customization guidelines
+      - Include environment variable documentation
+      - Add configuration overriding instructions
+      - Include default values explanation
+      - Add debugging configuration options
+      - Include performance tuning settings
+      - Add security-related configuration
+      - Include feature toggle documentation
+
+76.** @workspace generate code for following
+docs/relationships.md**
+    - Purpose: Relationship documentation
+    - Code Requirements:
+      - Create a Markdown file explaining supported relationship types
+      - Include relationship detection process documentation
+      - Add custom relationship configuration instructions
+      - Include polymorphic relationship handling
+      - Add example relationship configurations
+      - Include troubleshooting relationship issues
+      - Add naming convention documentation
+      - Include validation rule generation for relationships
+      - Add UI handling for relationship forms
+      - Include advanced relationship scenarios
+
+77.** @workspace generate code for following
+docs/advanced-usage.md**
+    - Purpose: Advanced features documentation
+    - Code Requirements:
+      - Create a Markdown file with complex usage scenarios
+      - Include customization examples for generators
+      - Add integration patterns with other packages
+      - Include performance optimization techniques
+      - Add bulk operation documentation
+      - Include event handling explanations
+      - Add caching strategy documentation
+      - Include security hardening recommendations
+      - Add workflow example implementations
+      - Include migration strategies for existing applications
+
+78.** @workspace generate code for following
+docs/extending.md**
+    - Purpose: Extension documentation
+    - Code Requirements:
+      - Create a Markdown file documenting extension points
+      - Include custom generator implementation examples
+      - Add component overriding instructions
+      - Include custom template creation guidelines
+      - Add middleware implementation examples
+      - Include service customization documentation
+      - Add event listener implementation examples
+      - Include new feature addition guidelines
+      - Add plugin system documentation if applicable
+      - Include theme customization instructions
+
+## 11. Testing Suite
+
+79.** @workspace generate code for following
+tests/Feature/CrudGenerationTest.php**
+    - Purpose: Tests Crud generation
+    - Dependencies: GenerateCrudCommand
+    - Code Requirements:
+      - Create a test class extending TestCase
+      - Implement setUp() method with testing database
+      - Add testCommandExecution() method
+      - Include testFileGeneration() method
+      - Add testRelationshipDetection() method
+      - Include testValidationRuleGeneration() method
+      - Add testIntegrationWithLaravel() method
+      - Include testEdgeCases() method
+      - Add testErrorHandling() method
+      - Include testCustomizationOptions() method
+      - Add testDatabaseSetup() method
+      - Include tearDown() method
+      - Add detailed PHPDoc blocks for each method
+
+80.** @workspace generate code for following
+tests/Unit/RelationshipAnalyzerTest.php**
+    - Purpose: Tests relationship detection
+    - Dependencies: RelationshipAnalyzer, All relationship analyzers
+    - Code Requirements:
+      - Create a test class extending TestCase
+      - Implement setUp() method with mock schema
+      - Add testBelongsToDetection() method
+      - Include testHasManyDetection() method
+      - Add testHasOneDetection() method
+      - Include testBelongsToManyDetection() method
+      - Add testMorphToDetection() method
+      - Include testMorphManyDetection() method
+      - Add testCustomNamingConventions() method
+      - Include testEdgeCases() method
+      - Add testComplexRelationships() method
+      - Include testCrossDatabaseRelationships() method
+      - Add detailed PHPDoc blocks for each method
+
+81.** @workspace generate code for following
+tests/Integration/RepositoryTest.php**
+    - Purpose: Tests repository implementation
+    - Dependencies: BaseRepository, CacheDecorator
+    - Code Requirements:
+      - Create a test class extending TestCase
+      - Implement setUp() method with test repository
+      - Add testCrudOperations() method
+      - Include testTransactionHandling() method
+      - Add testCaching() method
+      - Include testQueryBuilding() method
+      - Add testFiltering() method
+      - Include testSorting() method
+      - Add testPagination() method
+      - Include testRelationshipLoading() method
+      - Add testSecurityChecks() method
+      - Include testPerformance() method
+      - Add detailed PHPDoc blocks for each method
+
+82.** @workspace generate code for following
+tests/Browser/CrudUiTest.php**
+    - Purpose: Tests UI with Laravel Dusk
+    - Dependencies: ViewGenerator, Vuexy components
+    - Code Requirements:
+      - Create a test class extending DuskTestCase
+      - Implement setUp() method with browser setup
+      - Add testIndexPageRendering() method
+      - Include testFormSubmission() method
+      - Add testValidationDisplay() method
+      - Include testRelationshipUi() method
+      - Add testFiltering() method
+      - Include testSorting() method
+      - Add testPagination() method
+      - Include testModalInteractions() method
+      - Add testFileUpload() method
+      - Include testJavaScriptFunctionality() method
+      - Add detailed PHPDoc blocks for each method
+
+## 12. CI/CD Integration
+
+83.** @workspace generate code for following
+src/Facades/Crud.php**
+    - Purpose: Facade for package functionality
+    - Dependencies: CrudServiceProvider
+    - Code Requirements:
+      - Create a class extending Illuminate\Support\Facades\Facade
+      - Implement getFacadeAccessor() method returning service name
+      - Add static method mappings for package functionality
+      - Include helper methods for common operations
+      - Add mock method for testing
+      - Include PHPDoc blocks for IDE support
+      - Add detailed documentation for each method
+
+84.** @workspace generate code for following
+src/CrudServiceProvider.php**
+    - Purpose: Bootstrap the entire package
+    - Dependencies: All package components
+    - Code Requirements:
+      - Create a class extending Illuminate\Support\ServiceProvider
+      - Implement register() method for service container bindings
+      - Add boot() method for bootstrapping components
+      - Include registerConfig() method
+      - Add bindInterfaces() method for all interfaces
+      - Include registerCommands() method for all commands
+      - Add publishAssets() method for public assets
+      - Include loadMigrations() method
+      - Add loadRoutes() method for package routes
+      - Include loadTranslations() method
+      - Add mergeConfigurations() method
+      - Include setupEventListeners() method
+      - Add registerFacade() method
+      - Include provides() method for deferred loading
+      - Add detailed PHPDoc blocks for each method
+
+85.** @workspace generate code for following
+.github/workflows/tests.yml**
+    - Purpose: GitHub Actions workflow for testing
+    - Code Requirements:
+      - Create a GitHub Actions workflow file
+      - Define workflow name and trigger events
+      - Set up test environment with matrix strategy
+      - Include PHP version matrix (8.1, 8.2, 8.3)
+      - Add database setup steps (MySQL/PostgreSQL)
+      - Include caching for dependencies
+      - Add steps for Composer installation
+      - Include PHPUnit test execution
+      - Add code coverage reporting
+      - Include failure notifications
+      - Add branch filtering configuration
+      - Include status badges generation
+
+86.** @workspace generate code for following
+.github/workflows/quality.yml**
+    - Purpose: Code quality checks
+    - Code Requirements:
+      - Create a GitHub Actions workflow file
+      - Define workflow name and trigger events
+      - Set up code style checking with PHP-CS-Fixer
+      - Include static analysis with PHPStan
+      - Add security scanning with Psalm
+      - Include dependency checking
+      - Add documentation building and deployment
+      - Include version bumping for releases
+      - Add release automation for tags
+      - Include changelog generation
+      - Add deployment to GitHub Pages for docs
+      - Include notification system for failures
+
+This comprehensive list provides detailed code requirements for all 86 files in the Laravel 12 Crud package. Each file is documented with its specific purpose, dependencies, and detailed features to guide code generation.
