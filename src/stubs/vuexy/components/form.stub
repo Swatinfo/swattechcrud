@@ -1,0 +1,786 @@
+{{-- 
+Component Class: SwatTech\Crud\View\Components\Form
+
+Properties:
+    - id: string - Unique identifier for the form component (default: auto-generated)
+    - model: string - The model class this form relates to
+    - action: string - Form action URL
+    - method: string - Form HTTP method (GET, POST, PUT, PATCH, DELETE)
+    - fields: array - Field configurations
+    - horizontal: boolean - Whether to use horizontal layout (default: false)
+    - enctype: string - Form encoding type (default: application/x-www-form-urlencoded)
+    - submitLabel: string - Label for submit button (default: Save)
+    - cancelUrl: string - URL to redirect on cancel
+    - fieldWidth: string - Default field container width (default: col-md-12)
+    - labelWidth: string - Default label width for horizontal layout (default: col-md-3)
+    - inputWidth: string - Default input width for horizontal layout (default: col-md-9)
+    - buttonClass: string - CSS class for buttons (default: btn-primary)
+    - showReset: boolean - Whether to show reset button (default: true)
+    - redirectAfterSave: string - URL to redirect after form submission
+    - conditionalLogic: array - Rules for conditional field display
+    - sections: array - Form sections configuration
+    - useAjax: boolean - Whether to use AJAX submission (default: false)
+    - preventDoubleSubmit: boolean - Prevent double form submission (default: true)
+    - validateClientSide: boolean - Enable client-side validation (default: true)
+--}}
+
+@props([
+    'id' => 'form-'.uniqid(),
+    'model' => null,
+    'action' => null,
+    'method' => 'POST',
+    'fields' => [],
+    'horizontal' => false,
+    'enctype' => 'application/x-www-form-urlencoded',
+    'submitLabel' => 'Save',
+    'cancelUrl' => null,
+    'fieldWidth' => 'col-md-12',
+    'labelWidth' => 'col-md-3',
+    'inputWidth' => 'col-md-9',
+    'buttonClass' => 'btn-primary',
+    'showReset' => true,
+    'redirectAfterSave' => null,
+    'conditionalLogic' => [],
+    'sections' => [],
+    'useAjax' => false,
+    'preventDoubleSubmit' => true,
+    'validateClientSide' => true
+])
+
+@php
+    // Default fields if not provided
+    if (empty($fields) && $model) {
+        $modelInstance = new $model();
+        // Try to get form fields from the model
+        $fields = method_exists($modelInstance, 'getFormFields') 
+            ? $modelInstance->getFormFields() 
+            : [];
+    }
+
+    // Determine actual HTTP method
+    $actualMethod = in_array(strtoupper($method), ['GET', 'POST']) ? $method : 'POST';
+    $methodField = in_array(strtoupper($method), ['GET', 'POST']) ? null : $method;
+    
+    // Process sections if available
+    $hasSections = !empty($sections);
+    if (!$hasSections && !empty($fields)) {
+        $sections = [
+            [
+                'title' => null,
+                'fields' => array_keys($fields),
+                'icon' => null,
+                'description' => null
+            ]
+        ];
+        $hasSections = true;
+    }
+@endphp
+
+<div id="{{ $id }}" class="form-component">
+    @if($useAjax)
+        <div id="{{ $id }}-alert" class="alert alert-success d-none" role="alert"></div>
+    @endif
+    
+    <form 
+        id="{{ $id }}-form"
+        action="{{ $action }}" 
+        method="{{ $actualMethod }}" 
+        enctype="{{ $enctype }}"
+        @if($useAjax) data-ajax-form="true" @endif
+        @if($preventDoubleSubmit) data-prevent-double-submit="true" @endif
+        @if($validateClientSide) data-validate="true" @endif
+        class="@if($horizontal) form-horizontal @endif"
+        novalidate
+    >
+        @csrf
+        @if($methodField)
+            @method($methodField)
+        @endif
+        
+        @if($hasSections)
+            @foreach($sections as $sectionIndex => $section)
+                <div class="form-section @if(!empty($section['class'])) {{ $section['class'] }} @endif" id="{{ $id }}-section-{{ $sectionIndex }}">
+                    @if(!empty($section['title']))
+                        <div class="section-header mb-3">
+                            <h4>
+                                @if(!empty($section['icon']))
+                                    <i class="{{ $section['icon'] }} me-1"></i>
+                                @endif
+                                {{ $section['title'] }}
+                            </h4>
+                            @if(!empty($section['description']))
+                                <p class="text-muted">{{ $section['description'] }}</p>
+                            @endif
+                        </div>
+                    @endif
+                    
+                    <div class="row">
+                        @foreach($section['fields'] as $fieldName)
+                            @php
+                                $field = $fields[$fieldName] ?? null;
+                                if (!$field) continue;
+                                
+                                // Set defaults
+                                $field['type'] = $field['type'] ?? 'text';
+                                $field['label'] = $field['label'] ?? str_replace('_', ' ', ucfirst($fieldName));
+                                $field['required'] = $field['required'] ?? false;
+                                $field['placeholder'] = $field['placeholder'] ?? null;
+                                $field['help'] = $field['help'] ?? null;
+                                $field['tooltip'] = $field['tooltip'] ?? null;
+                                $field['width'] = $field['width'] ?? $fieldWidth;
+                                $field['show'] = $field['show'] ?? true;
+                                $field['value'] = $field['value'] ?? old($fieldName);
+                                
+                                // Determine if field should be visible based on conditional logic
+                                $isVisible = true;
+                                if (!empty($field['conditions'])) {
+                                    $isVisible = false;
+                                    // Will be handled by JS
+                                }
+                            @endphp
+                            
+                            <div class="{{ $field['width'] }} form-field-container" 
+                                data-field="{{ $fieldName }}" 
+                                @if(!empty($field['conditions'])) 
+                                    data-conditions="{{ json_encode($field['conditions']) }}"
+                                    @if(!$isVisible) style="display:none;" @endif
+                                @endif
+                            >
+                                <div class="mb-3 @if($horizontal) row @endif">
+                                    @if($field['type'] !== 'hidden' && $field['type'] !== 'checkbox')
+                                        <label 
+                                            for="{{ $fieldName }}" 
+                                            class="form-label @if($horizontal) {{ $labelWidth }} col-form-label @endif"
+                                        >
+                                            {{ $field['label'] }}
+                                            @if($field['required'])
+                                                <span class="text-danger">*</span>
+                                            @endif
+                                            @if(!empty($field['tooltip']))
+                                                <i class="fas fa-info-circle" 
+                                                   data-bs-toggle="tooltip" 
+                                                   data-bs-placement="top" 
+                                                   title="{{ $field['tooltip'] }}">
+                                                </i>
+                                            @endif
+                                        </label>
+                                    @endif
+                                    
+                                    <div class="@if($horizontal) {{ $inputWidth }} @endif">
+                                        @switch($field['type'])
+                                            @case('text')
+                                            @case('email')
+                                            @case('password')
+                                            @case('number')
+                                            @case('tel')
+                                            @case('url')
+                                            @case('date')
+                                            @case('time')
+                                            @case('datetime-local')
+                                            @case('month')
+                                            @case('week')
+                                            @case('color')
+                                                <input 
+                                                    type="{{ $field['type'] }}" 
+                                                    id="{{ $fieldName }}" 
+                                                    name="{{ $fieldName }}" 
+                                                    class="form-control @error($fieldName) is-invalid @enderror" 
+                                                    placeholder="{{ $field['placeholder'] ?? '' }}"
+                                                    value="{{ $field['value'] ?? old($fieldName) }}"
+                                                    @if($field['required']) required @endif
+                                                    @if(!empty($field['min'])) min="{{ $field['min'] }}" @endif
+                                                    @if(!empty($field['max'])) max="{{ $field['max'] }}" @endif
+                                                    @if(!empty($field['step'])) step="{{ $field['step'] }}" @endif
+                                                    @if(!empty($field['pattern'])) pattern="{{ $field['pattern'] }}" @endif
+                                                    @if(!empty($field['attributes']))
+                                                        @foreach($field['attributes'] as $attr => $value)
+                                                            {{ $attr }}="{{ $value }}"
+                                                        @endforeach
+                                                    @endif
+                                                >
+                                                @break
+                                                
+                                            @case('textarea')
+                                                <textarea 
+                                                    id="{{ $fieldName }}" 
+                                                    name="{{ $fieldName }}" 
+                                                    class="form-control @error($fieldName) is-invalid @enderror" 
+                                                    placeholder="{{ $field['placeholder'] ?? '' }}"
+                                                    @if($field['required']) required @endif
+                                                    @if(!empty($field['rows'])) rows="{{ $field['rows'] }}" @endif
+                                                    @if(!empty($field['attributes']))
+                                                        @foreach($field['attributes'] as $attr => $value)
+                                                            {{ $attr }}="{{ $value }}"
+                                                        @endforeach
+                                                    @endif
+                                                >{{ $field['value'] ?? old($fieldName) }}</textarea>
+                                                @break
+                                                
+                                            @case('select')
+                                                <select 
+                                                    id="{{ $fieldName }}" 
+                                                    name="{{ $fieldName }}@if(!empty($field['multiple']))[]@endif" 
+                                                    class="form-select @error($fieldName) is-invalid @enderror"
+                                                    @if($field['required']) required @endif
+                                                    @if(!empty($field['multiple'])) multiple @endif
+                                                    @if(!empty($field['attributes']))
+                                                        @foreach($field['attributes'] as $attr => $value)
+                                                            {{ $attr }}="{{ $value }}"
+                                                        @endforeach
+                                                    @endif
+                                                >
+                                                    @if(empty($field['multiple']))
+                                                        <option value="">{{ $field['placeholder'] ?? 'Select...' }}</option>
+                                                    @endif
+                                                    
+                                                    @foreach($field['options'] as $optionValue => $optionLabel)
+                                                        <option 
+                                                            value="{{ $optionValue }}"
+                                                            @if(
+                                                                (is_array($field['value'] ?? old($fieldName)) && in_array($optionValue, $field['value'] ?? old($fieldName))) ||
+                                                                (!is_array($field['value'] ?? old($fieldName)) && $optionValue == ($field['value'] ?? old($fieldName)))
+                                                            ) 
+                                                                selected 
+                                                            @endif
+                                                        >
+                                                            {{ $optionLabel }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                @break
+                                                
+                                            @case('checkbox')
+                                                <div class="form-check">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        id="{{ $fieldName }}" 
+                                                        name="{{ $fieldName }}" 
+                                                        class="form-check-input @error($fieldName) is-invalid @enderror"
+                                                        value="1"
+                                                        @if(old($fieldName, $field['value'] ?? false)) checked @endif
+                                                        @if($field['required']) required @endif
+                                                        @if(!empty($field['attributes']))
+                                                            @foreach($field['attributes'] as $attr => $value)
+                                                                {{ $attr }}="{{ $value }}"
+                                                            @endforeach
+                                                        @endif
+                                                    >
+                                                    <label class="form-check-label" for="{{ $fieldName }}">
+                                                        {{ $field['label'] }}
+                                                        @if($field['required'])
+                                                            <span class="text-danger">*</span>
+                                                        @endif
+                                                    </label>
+                                                </div>
+                                                @break
+                                                
+                                            @case('radio')
+                                                @foreach($field['options'] as $optionValue => $optionLabel)
+                                                    <div class="form-check">
+                                                        <input 
+                                                            type="radio" 
+                                                            id="{{ $fieldName }}_{{ $loop->index }}" 
+                                                            name="{{ $fieldName }}" 
+                                                            class="form-check-input @error($fieldName) is-invalid @enderror"
+                                                            value="{{ $optionValue }}"
+                                                            @if($optionValue == old($fieldName, $field['value'] ?? '')) checked @endif
+                                                            @if($field['required']) required @endif
+                                                            @if(!empty($field['attributes']))
+                                                                @foreach($field['attributes'] as $attr => $value)
+                                                                    {{ $attr }}="{{ $value }}"
+                                                                @endforeach
+                                                            @endif
+                                                        >
+                                                        <label class="form-check-label" for="{{ $fieldName }}_{{ $loop->index }}">
+                                                            {{ $optionLabel }}
+                                                        </label>
+                                                    </div>
+                                                @endforeach
+                                                @break
+                                                
+                                            @case('file')
+                                                <input 
+                                                    type="file" 
+                                                    id="{{ $fieldName }}" 
+                                                    name="{{ $fieldName }}@if(!empty($field['multiple']))[]@endif" 
+                                                    class="form-control @error($fieldName) is-invalid @enderror"
+                                                    @if($field['required']) required @endif
+                                                    @if(!empty($field['multiple'])) multiple @endif
+                                                    @if(!empty($field['accept'])) accept="{{ $field['accept'] }}" @endif
+                                                    @if(!empty($field['attributes']))
+                                                        @foreach($field['attributes'] as $attr => $value)
+                                                            {{ $attr }}="{{ $value }}"
+                                                        @endforeach
+                                                    @endif
+                                                >
+                                                @if(!empty($field['preview']) && !empty($field['value']))
+                                                    <div class="mt-2 file-preview">
+                                                        @if(is_string($field['value']))
+                                                            @php
+                                                                $extension = pathinfo($field['value'], PATHINFO_EXTENSION);
+                                                                $isImage = in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']);
+                                                            @endphp
+                                                            
+                                                            @if($isImage)
+                                                                <img src="{{ asset($field['value']) }}" alt="Preview" class="img-thumbnail" style="max-height: 150px;">
+                                                            @else
+                                                                <a href="{{ asset($field['value']) }}" target="_blank">{{ basename($field['value']) }}</a>
+                                                            @endif
+                                                        @elseif(is_array($field['value']))
+                                                            @foreach($field['value'] as $file)
+                                                                @php
+                                                                    $extension = pathinfo($file, PATHINFO_EXTENSION);
+                                                                    $isImage = in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']);
+                                                                @endphp
+                                                                
+                                                                <div class="d-inline-block me-2">
+                                                                    @if($isImage)
+                                                                        <img src="{{ asset($file) }}" alt="Preview" class="img-thumbnail" style="max-height: 150px;">
+                                                                    @else
+                                                                        <a href="{{ asset($file) }}" target="_blank">{{ basename($file) }}</a>
+                                                                    @endif
+                                                                </div>
+                                                            @endforeach
+                                                        @endif
+                                                    </div>
+                                                @endif
+                                                @break
+                                                
+                                            @case('hidden')
+                                                <input 
+                                                    type="hidden" 
+                                                    id="{{ $fieldName }}" 
+                                                    name="{{ $fieldName }}" 
+                                                    value="{{ $field['value'] ?? old($fieldName) }}"
+                                                >
+                                                @break
+                                                
+                                            @default
+                                                @if($slot->isNotEmpty() && isset(${'field_' . $field['type']}))
+                                                    {{ ${'field_' . $field['type']}(['name' => $fieldName, 'field' => $field]) }}
+                                                @else
+                                                    <input 
+                                                        type="text" 
+                                                        id="{{ $fieldName }}" 
+                                                        name="{{ $fieldName }}" 
+                                                        class="form-control @error($fieldName) is-invalid @enderror" 
+                                                        placeholder="{{ $field['placeholder'] ?? '' }}"
+                                                        value="{{ $field['value'] ?? old($fieldName) }}"
+                                                        @if($field['required']) required @endif
+                                                    >
+                                                @endif
+                                        @endswitch
+                                        
+                                        @error($fieldName)
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                        
+                                        @if(!empty($field['help']))
+                                            <div class="form-text text-muted">{{ $field['help'] }}</div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                
+                @if(!$loop->last)
+                    <hr class="my-4">
+                @endif
+            @endforeach
+        @endif
+        
+        <div class="form-actions mt-4">
+            <div class="d-flex @if($horizontal) justify-content-end @else justify-content-between @endif">
+                @if($cancelUrl)
+                    <a href="{{ $cancelUrl }}" class="btn btn-outline-secondary me-2">Cancel</a>
+                @endif
+                
+                <div>
+                    @if($showReset)
+                        <button type="reset" class="btn btn-outline-secondary me-2">Reset</button>
+                    @endif
+                    <button type="submit" class="btn {{ $buttonClass }}" id="{{ $id }}-submit-btn">
+                        {{ $submitLabel }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@once
+    @push('scripts')
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize form components
+        initializeForms();
+        
+        function initializeForms() {
+            // Initialize all tooltips
+            const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+            if (tooltipTriggerList.length > 0) {
+                [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+            }
+            
+            // Process conditional logic for all forms
+            document.querySelectorAll('.form-component').forEach(formComponent => {
+                setupConditionalLogic(formComponent);
+            });
+            
+            // Setup client-side validation
+            document.querySelectorAll('form[data-validate="true"]').forEach(form => {
+                setupFormValidation(form);
+            });
+            
+            // Prevent double submission
+            document.querySelectorAll('form[data-prevent-double-submit="true"]').forEach(form => {
+                setupPreventDoubleSubmit(form);
+            });
+            
+            // Setup AJAX forms
+            document.querySelectorAll('form[data-ajax-form="true"]').forEach(form => {
+                setupAjaxForm(form);
+            });
+        }
+        
+        function setupConditionalLogic(formComponent) {
+            const form = formComponent.querySelector('form');
+            const conditionalFields = formComponent.querySelectorAll('[data-conditions]');
+            
+            if (conditionalFields.length === 0) return;
+            
+            // Initial check for all conditional fields
+            conditionalFields.forEach(field => {
+                evaluateConditions(field, form);
+            });
+            
+            // Add event listeners to form fields that might affect conditional logic
+            form.addEventListener('change', function(e) {
+                // When any form field changes, re-evaluate all conditional fields
+                conditionalFields.forEach(field => {
+                    evaluateConditions(field, form);
+                });
+            });
+        }
+        
+        function evaluateConditions(field, form) {
+            const conditions = JSON.parse(field.dataset.conditions);
+            let shouldShow = false;
+            
+            if (Array.isArray(conditions)) {
+                // Multiple condition groups with OR logic between them
+                shouldShow = conditions.some(conditionGroup => {
+                    if (Array.isArray(conditionGroup)) {
+                        // AND logic within each group
+                        return conditionGroup.every(condition => {
+                            return evaluateSingleCondition(condition, form);
+                        });
+                    } else {
+                        // Single condition
+                        return evaluateSingleCondition(conditionGroup, form);
+                    }
+                });
+            } else {
+                // Single condition
+                shouldShow = evaluateSingleCondition(conditions, form);
+            }
+            
+            if (shouldShow) {
+                field.style.display = '';
+            } else {
+                field.style.display = 'none';
+                // Reset values of hidden fields
+                const inputs = field.querySelectorAll('input, select, textarea');
+                inputs.forEach(input => {
+                    if (input.type === 'checkbox' || input.type === 'radio') {
+                        input.checked = false;
+                    } else {
+                        input.value = '';
+                    }
+                });
+            }
+        }
+        
+        function evaluateSingleCondition(condition, form) {
+            const { field: conditionField, operator, value } = condition;
+            const formField = form.elements[conditionField];
+            
+            if (!formField) return false;
+            
+            let fieldValue;
+            if (formField.type === 'checkbox') {
+                fieldValue = formField.checked;
+            } else if (formField.type === 'radio') {
+                const checkedRadio = form.querySelector(`input[name="${conditionField}"]:checked`);
+                fieldValue = checkedRadio ? checkedRadio.value : null;
+            } else {
+                fieldValue = formField.value;
+            }
+            
+            switch (operator) {
+                case '==':
+                    return fieldValue == value;
+                case '!=':
+                    return fieldValue != value;
+                case '>':
+                    return parseFloat(fieldValue) > parseFloat(value);
+                case '>=':
+                    return parseFloat(fieldValue) >= parseFloat(value);
+                case '<':
+                    return parseFloat(fieldValue) < parseFloat(value);
+                case '<=':
+                    return parseFloat(fieldValue) <= parseFloat(value);
+                case 'contains':
+                    return fieldValue.includes(value);
+                case 'not_contains':
+                    return !fieldValue.includes(value);
+                case 'starts_with':
+                    return fieldValue.startsWith(value);
+                case 'ends_with':
+                    return fieldValue.endsWith(value);
+                case 'empty':
+                    return !fieldValue || fieldValue === '';
+                case 'not_empty':
+                    return fieldValue && fieldValue !== '';
+                case 'in':
+                    return Array.isArray(value) && value.includes(fieldValue);
+                case 'not_in':
+                    return Array.isArray(value) && !value.includes(fieldValue);
+                default:
+                    return false;
+            }
+        }
+        
+        function setupFormValidation(form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    // Find first invalid element and focus it
+                    const firstInvalid = form.querySelector(':invalid');
+                    if (firstInvalid) {
+                        firstInvalid.focus();
+                        
+                        // If the element is in a hidden section, make it visible
+                        const hiddenParent = firstInvalid.closest('[style*="display: none"]');
+                        if (hiddenParent) {
+                            hiddenParent.style.display = '';
+                        }
+                    }
+                }
+                
+                form.classList.add('was-validated');
+            }, false);
+        }
+        
+        function setupPreventDoubleSubmit(form) {
+            form.addEventListener('submit', function() {
+                const submitButton = form.querySelector('button[type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    
+                    // Create and add spinner
+                    const spinner = document.createElement('span');
+                    spinner.className = 'spinner-border spinner-border-sm me-2';
+                    spinner.setAttribute('role', 'status');
+                    spinner.setAttribute('aria-hidden', 'true');
+                    
+                    // Store original button text
+                    submitButton.dataset.originalText = submitButton.innerHTML;
+                    submitButton.prepend(spinner);
+                }
+            });
+        }
+        
+        function setupAjaxForm(form) {
+            const formComponent = form.closest('.form-component');
+            const submitButton = form.querySelector('button[type="submit"]');
+            const alertBox = formComponent.querySelector('.alert');
+            
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // First run validation
+                if (!form.checkValidity()) {
+                    form.classList.add('was-validated');
+                    return;
+                }
+                
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+                }
+                
+                fetch(form.action, {
+                    method: form.method.toUpperCase() === 'GET' ? 'GET' : 'POST',
+                    body: form.method.toUpperCase() === 'GET' ? null : new FormData(form),
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (alertBox) {
+                            alertBox.classList.remove('d-none', 'alert-danger');
+                            alertBox.classList.add('alert-success');
+                            alertBox.textContent = data.message || 'Form submitted successfully';
+                        }
+                        
+                        // Reset form after successful submission
+                        form.reset();
+                        form.classList.remove('was-validated');
+                        
+                        // Redirect if specified
+                        if (data.redirect) {
+                            window.location.href = data.redirect;
+                        }
+                    } else {
+                        if (alertBox) {
+                            alertBox.classList.remove('d-none', 'alert-success');
+                            alertBox.classList.add('alert-danger');
+                            alertBox.textContent = data.message || 'Error submitting form';
+                        }
+                        
+                        // Display validation errors
+                        if (data.errors) {
+                            Object.keys(data.errors).forEach(fieldName => {
+                                const field = form.elements[fieldName];
+                                if (field) {
+                                    field.classList.add('is-invalid');
+                                    
+                                    // Create or update invalid feedback
+                                    let feedback = field.nextElementSibling;
+                                    if (!feedback || !feedback.classList.contains('invalid-feedback')) {
+                                        feedback = document.createElement('div');
+                                        feedback.className = 'invalid-feedback';
+                                        field.parentNode.insertBefore(feedback, field.nextSibling);
+                                    }
+                                    feedback.textContent = data.errors[fieldName][0];
+                                }
+                            });
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (alertBox) {
+                        alertBox.classList.remove('d-none', 'alert-success');
+                        alertBox.classList.add('alert-danger');
+                        alertBox.textContent = 'An unexpected error occurred';
+                    }
+                })
+                .finally(() => {
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        if (submitButton.dataset.originalText) {
+                            submitButton.innerHTML = submitButton.dataset.originalText;
+                        } else {
+                            submitButton.textContent = 'Submit';
+                        }
+                    }
+                });
+            });
+        }
+    });
+    </script>
+    @endpush
+@endonce
+
+<style>
+/* Custom styles for form component */
+.form-component .form-section {
+    margin-bottom: 2rem;
+}
+
+.form-component .section-header {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.5rem;
+}
+
+.form-component .form-actions {
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.form-component .form-label.required:after {
+    content: "*";
+    color: #ea5455;
+    margin-left: 2px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .form-component .form-horizontal .row {
+        display: block;
+    }
+    
+    .form-component .form-horizontal .form-label {
+        text-align: left;
+        margin-bottom: 0.5rem;
+    }
+    
+       .form-component .form-actions {
+        flex-direction: column-reverse;
+    }
+    
+    .form-component .form-actions div {
+        margin-bottom: 1rem;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+    
+    .form-component .form-actions a,
+    .form-component .form-actions button {
+        width: 100%;
+        margin: 0.25rem;
+    }
+}
+
+/* File preview styling */
+.form-component .file-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.form-component .file-preview img {
+    border-radius: 0.25rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.form-component .file-preview img:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Validation styling */
+.form-component .was-validated .form-control:valid,
+.form-component .was-validated .form-select:valid {
+    border-color: #28c76f;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%2328c76f' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+/* Focus states */
+.form-component .form-control:focus,
+.form-component .form-select:focus {
+    border-color: #7367f0;
+    box-shadow: 0 0 0 0.25rem rgba(115, 103, 240, 0.25);
+}
+
+/* Tooltip custom styling */
+.form-component i[data-bs-toggle="tooltip"] {
+    color: #6e6b7b;
+    font-size: 0.85rem;
+    margin-left: 0.25rem;
+    cursor: help;
+}
+</style>

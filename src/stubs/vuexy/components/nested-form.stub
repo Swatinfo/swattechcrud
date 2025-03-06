@@ -1,0 +1,858 @@
+{{-- 
+Component Class: SwatTech\Crud\View\Components\NestedForm
+
+Properties:
+    - id: string - Unique identifier for the nested form component (default: auto-generated)
+    - name: string - Name for the form array (required)
+    - label: string - Label for the nested form group
+    - items: array - Existing items to populate the form with
+    - template: array - Template for new items
+    - min: integer - Minimum number of items (default: 0)
+    - max: integer - Maximum number of items (default: null)
+    - sortable: boolean - Whether items can be reordered (default: true)
+    - collapsible: boolean - Whether items can be collapsed (default: true)
+    - defaultOpen: boolean - Whether items are expanded by default (default: true)
+    - inheritFrom: string - Field to inherit values from (for inheritance pattern)
+    - buttonClass: string - CSS class for buttons (default: btn-primary)
+    - containerClass: string - CSS class for the container (default: mb-4)
+    - relationship: string - Relationship name for binding
+    - dependsOn: string - Field this nested form depends on
+    - showLabels: boolean - Whether to show field labels (default: true)
+--}}
+
+@props([
+    'id' => 'nested-form-'.uniqid(),
+    'name',
+    'label' => null,
+    'items' => [],
+    'template' => [],
+    'min' => 0,
+    'max' => null,
+    'sortable' => true,
+    'collapsible' => true,
+    'defaultOpen' => true,
+    'inheritFrom' => null,
+    'buttonClass' => 'btn-primary',
+    'containerClass' => 'mb-4',
+    'relationship' => null,
+    'dependsOn' => null,
+    'showLabels' => true
+])
+
+@php
+    // Convert dot notation names to array notation for form submission
+    $formName = str_replace('.', '[', $name) . (substr_count($name, '.') > 0 ? ']' : '');
+    
+    // Initialize items array if it's not already
+    if (!is_array($items)) {
+        $items = [];
+    }
+    
+    // Make sure we have at least the minimum number of items
+    if (count($items) < $min) {
+        for ($i = count($items); $i < $min; $i++) {
+            $items[] = $template;
+        }
+    }
+    
+    // Convert items to associative with keys for stable references
+    $itemsKeyed = [];
+    foreach ($items as $index => $item) {
+        $key = $item['id'] ?? uniqid();
+        $itemsKeyed[$key] = $item;
+    }
+    
+    // Prepare template as JSON for JavaScript
+    $templateJson = json_encode($template);
+    
+    // Check if we need to disable the add button due to max limit
+    $disableAdd = $max !== null && count($items) >= $max;
+@endphp
+
+<div 
+    id="{{ $id }}" 
+    class="nested-form-component {{ $containerClass }}"
+    data-min-items="{{ $min }}"
+    data-max-items="{{ $max }}"
+    data-name="{{ $name }}"
+    @if($dependsOn)
+    data-depends-on="{{ $dependsOn }}"
+    @endif
+>
+    @if($label)
+    <label class="form-label d-block">
+        {{ $label }}
+        @if($max !== null)
+        <span class="items-counter text-muted">({{ count($items) }}/{{ $max }})</span>
+        @else
+        <span class="items-counter text-muted">({{ count($items) }})</span>
+        @endif
+    </label>
+    @endif
+    
+    <div class="nested-items-container" id="{{ $id }}-items">
+        @if(empty($items))
+        <div class="nested-form-empty-state text-center py-3 mb-2">
+            <p class="text-muted">No items added yet.</p>
+        </div>
+        @endif
+        
+        @foreach($itemsKeyed as $itemKey => $item)
+        <div 
+            class="nested-form-item card mb-2" 
+            data-item-key="{{ $itemKey }}"
+            @if($sortable) draggable="true" @endif
+        >
+            <div class="card-header p-1 @if($collapsible) cursor-pointer @endif d-flex align-items-center justify-content-between">
+                <div class="item-header d-flex align-items-center">
+                    @if($sortable)
+                    <div class="drag-handle me-2 cursor-move">
+                        <i class="fa fa-grip-lines" aria-hidden="true"></i>
+                        <span class="visually-hidden">Drag to reorder</span>
+                    </div>
+                    @endif
+                    
+                    <span class="item-title">
+                        {{ $item['title'] ?? 'Item ' . ($loop->index + 1) }}
+                    </span>
+                </div>
+                
+                <div class="item-actions">
+                    @if($collapsible)
+                    <button 
+                        type="button" 
+                        class="btn btn-sm btn-icon toggle-item" 
+                        aria-expanded="{{ $defaultOpen ? 'true' : 'false' }}"
+                        aria-label="Toggle item"
+                    >
+                        <i class="fa fa-{{ $defaultOpen ? 'chevron-up' : 'chevron-down' }}" aria-hidden="true"></i>
+                    </button>
+                    @endif
+                    
+                    <button 
+                        type="button" 
+                        class="btn btn-sm btn-icon remove-item text-danger" 
+                        @if(count($items) <= $min) disabled @endif
+                        aria-label="Remove item"
+                    >
+                        <i class="fa fa-times" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card-body nested-item-content p-2 @if($collapsible && !$defaultOpen) d-none @endif">
+                {{-- Hidden ID field to maintain item identity --}}
+                <input type="hidden" name="{{ $formName }}[{{ $itemKey }}][id]" value="{{ $item['id'] ?? $itemKey }}">
+                
+                @if($sortable)
+                <input type="hidden" name="{{ $formName }}[{{ $itemKey }}][sort_order]" value="{{ $loop->index }}" class="item-sort-order">
+                @endif
+
+                <div class="row">
+                @foreach($template as $fieldName => $field)
+                    @if($fieldName === 'id' || $fieldName === 'sort_order') @continue @endif
+                    
+                    @php
+                        // Basic field defaults
+                        $field['type'] = $field['type'] ?? 'text';
+                        $field['label'] = $field['label'] ?? str_replace('_', ' ', ucfirst($fieldName));
+                        $field['required'] = $field['required'] ?? false;
+                        $field['width'] = $field['width'] ?? 'col-md-12';
+                        $field['value'] = $item[$fieldName] ?? old("{$name}.{$itemKey}.{$fieldName}");
+                        
+                        // Check if this field depends on another field for inheritance
+                        $isInherited = false;
+                        if ($inheritFrom && isset($field['inherit']) && $field['inherit']) {
+                            $isInherited = true;
+                        }
+                    @endphp
+                    
+                    <div class="{{ $field['width'] }}">
+                        <div class="mb-2">
+                            @if($showLabels && $field['type'] !== 'hidden' && $field['type'] !== 'checkbox')
+                            <label class="form-label" for="{{ $id }}_{{ $itemKey }}_{{ $fieldName }}">
+                                {{ $field['label'] }}
+                                @if($field['required'])
+                                <span class="text-danger">*</span>
+                                @endif
+                            </label>
+                            @endif
+                            
+                            @if($isInherited)
+                            <div class="input-group">
+                                <div class="input-group-text">
+                                    <div class="form-check mb-0">
+                                        <input 
+                                            type="checkbox"
+                                            class="form-check-input inherit-toggle"
+                                            id="{{ $id }}_{{ $itemKey }}_inherit_{{ $fieldName }}"
+                                            name="{{ $formName }}[{{ $itemKey }}][inherit_{{ $fieldName }}]"
+                                            value="1"
+                                            @if(isset($item["inherit_{$fieldName}"]) && $item["inherit_{$fieldName}"]) checked @endif
+                                            data-target-field="{{ $fieldName }}"
+                                        >
+                                        <label class="form-check-label" for="{{ $id }}_{{ $itemKey }}_inherit_{{ $fieldName }}">
+                                            <small>Inherit</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                @include('components.nested-form-field', [
+                                    'type' => $field['type'],
+                                    'name' => "{$formName}[{$itemKey}][{$fieldName}]",
+                                    'id' => "{$id}_{$itemKey}_{$fieldName}",
+                                    'value' => $field['value'],
+                                    'disabled' => isset($item["inherit_{$fieldName}"]) && $item["inherit_{$fieldName}"],
+                                    'field' => $field
+                                ])
+                            </div>
+                            @else
+                                @include('components.nested-form-field', [
+                                    'type' => $field['type'],
+                                    'name' => "{$formName}[{$itemKey}][{$fieldName}]",
+                                    'id' => "{$id}_{$itemKey}_{$fieldName}",
+                                    'value' => $field['value'],
+                                    'field' => $field
+                                ])
+                            @endif
+                            
+                            @error("{$name}.{$itemKey}.{$fieldName}")
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                            
+                            @if(!empty($field['help']))
+                                <div class="form-text text-muted">{{ $field['help'] }}</div>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+                </div>
+            </div>
+        </div>
+        @endforeach
+    </div>
+    
+    <div class="nested-form-actions mt-2">
+        <button 
+            type="button"
+            class="btn btn-sm {{ $buttonClass }} add-item"
+            @if($disableAdd) disabled @endif
+            id="{{ $id }}-add-button"
+        >
+            <i class="fa fa-plus me-1" aria-hidden="true"></i>
+            Add {{ Str::singular($label ?? 'Item') }}
+        </button>
+        
+        @if($sortable && count($items) > 1)
+        <button type="button" class="btn btn-sm btn-outline-secondary sort-items ms-1">
+            <i class="fa fa-sort me-1" aria-hidden="true"></i>
+            Sort
+        </button>
+        @endif
+    </div>
+</div>
+
+{{-- Template for new items (hidden) --}}
+<template id="{{ $id }}-item-template">
+    <div 
+        class="nested-form-item card mb-2" 
+        data-item-key="__KEY__"
+        @if($sortable) draggable="true" @endif
+    >
+        <div class="card-header p-1 @if($collapsible) cursor-pointer @endif d-flex align-items-center justify-content-between">
+            <div class="item-header d-flex align-items-center">
+                @if($sortable)
+                <div class="drag-handle me-2 cursor-move">
+                    <i class="fa fa-grip-lines" aria-hidden="true"></i>
+                    <span class="visually-hidden">Drag to reorder</span>
+                </div>
+                @endif
+                
+                <span class="item-title">
+                    New Item
+                </span>
+            </div>
+            
+            <div class="item-actions">
+                @if($collapsible)
+                <button 
+                    type="button" 
+                    class="btn btn-sm btn-icon toggle-item" 
+                    aria-expanded="true"
+                    aria-label="Toggle item"
+                >
+                    <i class="fa fa-chevron-up" aria-hidden="true"></i>
+                </button>
+                @endif
+                
+                <button 
+                    type="button" 
+                    class="btn btn-sm btn-icon remove-item text-danger" 
+                    aria-label="Remove item"
+                >
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="card-body nested-item-content p-2">
+            {{-- Hidden ID field to maintain item identity --}}
+            <input type="hidden" name="{{ $formName }}[__KEY__][id]" value="__KEY__">
+            
+            @if($sortable)
+            <input type="hidden" name="{{ $formName }}[__KEY__][sort_order]" value="__SORT_ORDER__" class="item-sort-order">
+            @endif
+
+            <div class="row">
+            @foreach($template as $fieldName => $field)
+                @if($fieldName === 'id' || $fieldName === 'sort_order') @continue @endif
+                
+                @php
+                    // Basic field defaults
+                    $field['type'] = $field['type'] ?? 'text';
+                    $field['label'] = $field['label'] ?? str_replace('_', ' ', ucfirst($fieldName));
+                    $field['required'] = $field['required'] ?? false;
+                    $field['width'] = $field['width'] ?? 'col-md-12';
+                    
+                    // Check if this field depends on another field for inheritance
+                    $isInherited = false;
+                    if ($inheritFrom && isset($field['inherit']) && $field['inherit']) {
+                        $isInherited = true;
+                    }
+                @endphp
+                
+                <div class="{{ $field['width'] }}">
+                    <div class="mb-2">
+                        @if($showLabels && $field['type'] !== 'hidden' && $field['type'] !== 'checkbox')
+                        <label class="form-label" for="{{ $id }}___KEY___{{ $fieldName }}">
+                            {{ $field['label'] }}
+                            @if($field['required'])
+                            <span class="text-danger">*</span>
+                            @endif
+                        </label>
+                        @endif
+                        
+                        @if($isInherited)
+                        <div class="input-group">
+                            <div class="input-group-text">
+                                <div class="form-check mb-0">
+                                    <input 
+                                        type="checkbox"
+                                        class="form-check-input inherit-toggle"
+                                        id="{{ $id }}___KEY___inherit_{{ $fieldName }}"
+                                        name="{{ $formName }}[__KEY__][inherit_{{ $fieldName }}]"
+                                        value="1"
+                                        data-target-field="{{ $fieldName }}"
+                                    >
+                                    <label class="form-check-label" for="{{ $id }}___KEY___inherit_{{ $fieldName }}">
+                                        <small>Inherit</small>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            @include('components.nested-form-field', [
+                                'type' => $field['type'],
+                                'name' => "{$formName}[__KEY__][{$fieldName}]",
+                                'id' => "{$id}___KEY___{$fieldName}",
+                                'value' => $field['default'] ?? '',
+                                'field' => $field
+                            ])
+                        </div>
+                        @else
+                            @include('components.nested-form-field', [
+                                'type' => $field['type'],
+                                'name' => "{$formName}[__KEY__][{$fieldName}]",
+                                'id' => "{$id}___KEY___{$fieldName}",
+                                'value' => $field['default'] ?? '',
+                                'field' => $field
+                            ])
+                        @endif
+                        
+                        @if(!empty($field['help']))
+                            <div class="form-text text-muted">{{ $field['help'] }}</div>
+                        @endif
+                    </div>
+                </div>
+            @endforeach
+            </div>
+        </div>
+    </div>
+</template>
+
+@once
+    @push('scripts')
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize all nested form components
+        document.querySelectorAll('.nested-form-component').forEach(component => {
+            initNestedForm(component);
+        });
+        
+        function initNestedForm(component) {
+            // Get component ID and properties
+            const id = component.id;
+            const minItems = parseInt(component.dataset.minItems) || 0;
+            const maxItems = component.dataset.maxItems ? parseInt(component.dataset.maxItems) : null;
+            const name = component.dataset.name;
+            
+            // Reference to the items container
+            const itemsContainer = document.getElementById(`${id}-items`);
+            
+            // Reference to the template
+            const itemTemplate = document.getElementById(`${id}-item-template`);
+            
+            // Reference to the add button
+            const addButton = document.getElementById(`${id}-add-button`);
+            
+            // Handle "Add Item" button click
+            if (addButton) {
+                addButton.addEventListener('click', function() {
+                    const currentItems = itemsContainer.querySelectorAll('.nested-form-item').length;
+                    
+                    // Check if we've reached the maximum
+                    if (maxItems !== null && currentItems >= maxItems) {
+                        return;
+                    }
+                    
+                    // Generate a unique key for the new item
+                    const newKey = 'new_' + Date.now();
+                    
+                    // Clone the template content
+                    const templateContent = itemTemplate.innerHTML
+                        .replace(/__KEY__/g, newKey)
+                        .replace(/__SORT_ORDER__/g, currentItems);
+                    
+                    // Create a new item element
+                    const newItemWrapper = document.createElement('div');
+                    newItemWrapper.innerHTML = templateContent;
+                    const newItem = newItemWrapper.firstElementChild;
+                    
+                    // Add the new item to the container
+                    if (currentItems === 0) {
+                        // Remove empty state if this is the first item
+                        const emptyState = itemsContainer.querySelector('.nested-form-empty-state');
+                        if (emptyState) {
+                            emptyState.remove();
+                        }
+                    }
+                    
+                    itemsContainer.appendChild(newItem);
+                    
+                    // Update item counts
+                    updateItemsCounter(component);
+                    
+                    // Disable the add button if we've reached the maximum
+                    if (maxItems !== null && currentItems + 1 >= maxItems) {
+                        addButton.disabled = true;
+                    }
+                    
+                    // Setup the item's event listeners
+                    setupItemEventListeners(newItem);
+                    
+                    // Initialize any third-party components in the new item
+                    initializeNestedItemComponents(newItem);
+                    
+                    // Trigger a custom event that the component was updated
+                    component.dispatchEvent(new CustomEvent('nestedform:itemadded', {
+                        bubbles: true,
+                        detail: { item: newItem, key: newKey }
+                    }));
+                });
+            }
+            
+            // Setup event listeners for existing items
+            component.querySelectorAll('.nested-form-item').forEach(item => {
+                setupItemEventListeners(item);
+                
+                // Initialize inheritance checkboxes
+                item.querySelectorAll('.inherit-toggle').forEach(checkbox => {
+                    const fieldName = checkbox.dataset.targetField;
+                    const inputField = item.querySelector(`[name$="[${fieldName}]"]:not([type="hidden"])`);
+                    
+                    if (checkbox.checked && inputField) {
+                        inputField.disabled = true;
+                        inputField.classList.add('bg-light');
+                    }
+                });
+            });
+            
+            // Setup dependencies if specified
+            if (component.dataset.dependsOn) {
+                const dependentField = document.querySelector(`[name="${component.dataset.dependsOn}"]`);
+                if (dependentField) {
+                    dependentField.addEventListener('change', function() {
+                        updateDependentFields(component, this.value);
+                    });
+                    
+                    // Trigger initial update
+                    updateDependentFields(component, dependentField.value);
+                }
+            }
+            
+            // Setup sortable functionality if enabled
+            if (component.querySelectorAll('.drag-handle').length > 0) {
+                setupSortable(component);
+            }
+            
+            function setupItemEventListeners(item) {
+                // Toggle collapse/expand
+                const toggleBtn = item.querySelector('.toggle-item');
+                if (toggleBtn) {
+                    toggleBtn.addEventListener('click', function() {
+                        const content = item.querySelector('.nested-item-content');
+                        const icon = this.querySelector('i');
+                        
+                        if (content.classList.contains('d-none')) {
+                            content.classList.remove('d-none');
+                            this.setAttribute('aria-expanded', 'true');
+                            icon.classList.remove('fa-chevron-down');
+                            icon.classList.add('fa-chevron-up');
+                        } else {
+                            content.classList.add('d-none');
+                            this.setAttribute('aria-expanded', 'false');
+                            icon.classList.remove('fa-chevron-up');
+                            icon.classList.add('fa-chevron-down');
+                        }
+                    });
+                    
+                    // Also make the header clickable for toggle
+                    const header = item.querySelector('.card-header');
+                    if (header) {
+                        header.addEventListener('click', function(e) {
+                            // Only toggle if the click wasn't on a button
+                            if (!e.target.closest('button')) {
+                                toggleBtn.click();
+                            }
+                        });
+                    }
+                }
+                
+                // Remove item
+                const removeBtn = item.querySelector('.remove-item');
+                if (removeBtn) {
+                    removeBtn.addEventListener('click', function() {
+                        const currentItems = itemsContainer.querySelectorAll('.nested-form-item').length;
+                        
+                        // Check if we can remove (respect min items)
+                        if (currentItems <= minItems) {
+                            return;
+                        }
+                        
+                        // Confirm deletion
+                        if (confirm('Are you sure you want to remove this item?')) {
+                            item.remove();
+                            
+                            // If no items left, show empty state
+                            if (currentItems - 1 === 0) {
+                                const emptyState = document.createElement('div');
+                                emptyState.className = 'nested-form-empty-state text-center py-3 mb-2';
+                                emptyState.innerHTML = '<p class="text-muted">No items added yet.</p>';
+                                itemsContainer.appendChild(emptyState);
+                            }
+                            
+                            // Enable add button if it was disabled
+                            if (addButton && addButton.disabled && currentItems - 1 < maxItems) {
+                                addButton.disabled = false;
+                            }
+                            
+                            // Update item counts
+                            updateItemsCounter(component);
+                            
+                            // Update sort orders
+                            updateSortOrders(component);
+                            
+                            // Trigger a custom event
+                            component.dispatchEvent(new CustomEvent('nestedform:itemremoved', {
+                                bubbles: true
+                            }));
+                        }
+                    });
+                }
+                
+                // Setup inheritance toggles
+                const inheritToggles = item.querySelectorAll('.inherit-toggle');
+                inheritToggles.forEach(toggle => {
+                    toggle.addEventListener('change', function() {
+                        const fieldName = this.dataset.targetField;
+                        const inputField = item.querySelector(`[name$="[${fieldName}]"]:not([type="hidden"])`);
+                        
+                        if (inputField) {
+                            inputField.disabled = this.checked;
+                            if (this.checked) {
+                                inputField.classList.add('bg-light');
+                            } else {
+                                inputField.classList.remove('bg-light');
+                            }
+                        }
+                    });
+                });
+            }
+            
+            function updateItemsCounter(component) {
+                const counter = component.querySelector('.items-counter');
+                if (counter) {
+                    const currentCount = itemsContainer.querySelectorAll('.nested-form-item').length;
+                    if (maxItems !== null) {
+                        counter.textContent = `(${currentCount}/${maxItems})`;
+                    } else {
+                        counter.textContent = `(${currentCount})`;
+                    }
+                }
+            }
+            
+            function updateSortOrders(component) {
+                const items = component.querySelectorAll('.nested-form-item');
+                items.forEach((item, index) => {
+                    const sortInput = item.querySelector('.item-sort-order');
+                    if (sortInput) {
+                        sortInput.value = index;
+                    }
+                });
+            }
+            
+            function setupSortable(component) {
+                const sortButton = component.querySelector('.sort-items');
+                if (!sortButton) return;
+                
+                let isDragging = false;
+                let draggedItem = null;
+                
+                sortButton.addEventListener('click', function() {
+                    const items = Array.from(itemsContainer.querySelectorAll('.nested-form-item'));
+                    
+                    // Sort items alphabetically by title
+                    items.sort((a, b) => {
+                        const titleA = a.querySelector('.item-title').textContent.trim().toLowerCase();
+                        const titleB = b.querySelector('.item-title').textContent.trim().toLowerCase();
+                        return titleA.localeCompare(titleB);
+                    });
+                    
+                    // Rearrange the DOM
+                    items.forEach(item => {
+                        itemsContainer.appendChild(item);
+                    });
+                    
+                    // Update sort orders
+                    updateSortOrders(component);
+                });
+                
+                // Drag and drop sorting
+                itemsContainer.addEventListener('dragstart', function(e) {
+                    const item = e.target.closest('.nested-form-item');
+                    if (!item) return;
+                    
+                    isDragging = true;
+                    draggedItem = item;
+                    
+                    // Add dragging class
+                    setTimeout(() => {
+                        item.classList.add('dragging');
+                    }, 0);
+                });
+                
+                itemsContainer.addEventListener('dragend', function(e) {
+                    const item = e.target.closest('.nested-form-item');
+                    if (!item) return;
+                    
+                    isDragging = false;
+                    item.classList.remove('dragging');
+                    updateSortOrders(component);
+                });
+                
+                itemsContainer.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    if (!isDragging) return;
+                    
+                    const closestItem = getClosestItem(e.clientY);
+                    if (closestItem) {
+                        const rect = closestItem.getBoundingClientRect();
+                        const midpoint = rect.y + rect.height / 2;
+                        
+                        if (e.clientY < midpoint) {
+                            // Insert before
+                            itemsContainer.insertBefore(draggedItem, closestItem);
+                        } else {
+                            // Insert after
+                            itemsContainer.insertBefore(draggedItem, closestItem.nextElementSibling);
+                        }
+                    }
+                });
+                
+                function getClosestItem(clientY) {
+                    const items = Array.from(itemsContainer.querySelectorAll('.nested-form-item:not(.dragging)'));
+                    
+                    let closestItem = null;
+                    let closestDistance = Number.POSITIVE_INFINITY;
+                    
+                    items.forEach(item => {
+                        const rect = item.getBoundingClientRect();
+                        const distance = Math.abs(rect.y + rect.height / 2 - clientY);
+                        
+                        if (distance < closestDistance) {
+                            closestDistance = distance;
+                            closestItem = item;
+                        }
+                    });
+                    
+                    return closestItem;
+                }
+            }
+            
+            function updateDependentFields(component, parentValue) {
+                if (!parentValue) {
+                    component.classList.add('d-none');
+                    return;
+                }
+                
+                const dependsOn = component.dataset.dependsOn;
+                const dependentItems = component.querySelectorAll('.nested-form-item');
+                
+                if (dependsOn.includes('type') || dependsOn.includes('category')) {
+                    component.classList.remove('d-none');
+                    
+                    dependentItems.forEach(item => {
+                        const itemData = item.dataset.itemType || item.dataset.itemCategory;
+                        
+                        if (itemData && itemData !== parentValue) {
+                            item.classList.add('d-none');
+                        } else {
+                            item.classList.remove('d-none');
+                        }
+                    });
+                } else {
+                    component.classList.remove('d-none');
+                }
+            }
+            
+            function initializeNestedItemComponents(item) {
+                // Initialize select2 if available
+                if (typeof $.fn.select2 !== 'undefined') {
+                    item.querySelectorAll('select.select2').forEach(select => {
+                        $(select).select2({
+                            dropdownParent: $(select).parent()
+                        });
+                    });
+                }
+                
+                // Initialize datepicker if available
+                if (typeof flatpickr !== 'undefined') {
+                    item.querySelectorAll('.flatpickr-input').forEach(input => {
+                        flatpickr(input, {
+                            dateFormat: input.dataset.dateFormat || 'Y-m-d',
+                            enableTime: input.dataset.enableTime === 'true'
+                        });
+                    });
+                }
+                
+                // Initialize other third-party components as needed
+            }
+        }
+    });
+    </script>
+    @endpush
+    
+    @push('styles')
+    <style>
+    .nested-form-component .card-header {
+        background-color: rgba(115, 103, 240, 0.08);
+    }
+    
+    .nested-form-component .nested-form-item.dragging {
+        opacity: 0.6;
+    }
+    
+        .nested-form-component .drag-handle {
+        cursor: grab;
+        color: #6e6b7b;
+        font-size: 0.8rem;
+    }
+    
+    .nested-form-component .drag-handle:active {
+        cursor: grabbing;
+    }
+    
+    .nested-form-component .btn-icon {
+        padding: 0.25rem;
+        line-height: 1;
+        border: none;
+        background: transparent;
+    }
+    
+    .nested-form-component .btn-icon:hover {
+        background-color: rgba(115, 103, 240, 0.12);
+        border-radius: 0.25rem;
+    }
+    
+    .nested-form-component .item-title {
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #5e5873;
+        max-width: calc(100% - 60px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .nested-form-component .cursor-pointer {
+        cursor: pointer;
+    }
+    
+    .nested-form-component .cursor-move {
+        cursor: move;
+    }
+    
+    .nested-form-component .nested-item-content {
+        transition: all 0.3s ease;
+    }
+    
+    .nested-form-component .toggle-item i {
+        transition: transform 0.2s ease;
+    }
+    
+    .nested-form-component .nested-form-empty-state {
+        border: 1px dashed #d8d6de;
+        border-radius: 0.357rem;
+    }
+    
+    .nested-form-component .items-counter {
+        font-size: 0.85rem;
+        margin-left: 0.5rem;
+        font-weight: normal;
+    }
+    
+    .nested-form-component .input-group-text {
+        padding: 0.438rem 1rem;
+    }
+    
+    .nested-form-component .card {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+    }
+    
+    .nested-form-component .card:hover {
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 767.98px) {
+        .nested-form-component .item-header {
+            max-width: 60%;
+        }
+        
+        .nested-form-component .item-title {
+            max-width: calc(100% - 30px);
+            font-size: 0.85rem;
+        }
+        
+        .nested-form-component .nested-form-actions {
+            flex-direction: column;
+        }
+        
+        .nested-form-component .nested-form-actions .btn {
+            margin-bottom: 0.5rem;
+            width: 100%;
+        }
+    }
+</style>
+@endpush
+@endonce

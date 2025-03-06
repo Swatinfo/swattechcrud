@@ -1,0 +1,720 @@
+{{-- 
+Component Class: SwatTech\Crud\View\Components\Card
+
+Properties:
+    - id: string - Unique identifier for the card component (default: auto-generated)
+    - title: string - Card title displayed in the header
+    - subtitle: string - Subtitle displayed below the title
+    - icon: string - Icon class to be displayed with the title
+    - headerClass: string - Additional CSS classes for the header
+    - bodyClass: string - Additional CSS classes for the body
+    - footerClass: string - Additional CSS classes for the footer
+    - cardClass: string - Additional CSS classes for the card container
+    - collapsible: boolean - Whether the card is collapsible (default: false)
+    - collapsed: boolean - Whether the card is initially collapsed (default: false)
+    - loading: boolean - Whether to show the loading state (default: false)
+    - color: string - Color variant (primary, secondary, success, danger, warning, info, dark) (default: null)
+    - borderColor: string - Border color variant (primary, secondary, success, danger, warning, info, dark) (default: null)
+    - textColor: string - Text color variant (primary, secondary, success, danger, warning, info, dark, white) (default: null)
+    - shadow: string - Shadow size (none, sm, md, lg) (default: null)
+    - actions: array - Action buttons configuration
+    - draggable: boolean - Whether the card is draggable (default: false)
+    - group: string - Card group identifier for grouping cards together
+    - width: string - Width class for the card (default: null)
+    - height: string - Height class for the card (default: null)
+    - flat: boolean - Whether to use flat style without shadows (default: false)
+    - outlined: boolean - Whether to use outlined style (default: false)
+    - headerActions: array - Header action buttons configuration
+    - footerActions: array - Footer action buttons configuration
+    - backdrop: boolean - Whether to show backdrop during loading (default: true)
+--}}
+
+@props([
+    'id' => 'card-'.uniqid(),
+    'title' => null,
+    'subtitle' => null,
+    'icon' => null,
+    'headerClass' => '',
+    'bodyClass' => '',
+    'footerClass' => '',
+    'cardClass' => '',
+    'collapsible' => false,
+    'collapsed' => false,
+    'loading' => false,
+    'color' => null,
+    'borderColor' => null,
+    'textColor' => null,
+    'shadow' => null,
+    'actions' => [],
+    'draggable' => false,
+    'group' => null,
+    'width' => null,
+    'height' => null,
+    'flat' => false,
+    'outlined' => false,
+    'headerActions' => [],
+    'footerActions' => [],
+    'backdrop' => true
+])
+
+@php
+    // Determine card classes based on props
+    $cardClasses = ['card'];
+    
+    // Add color variants
+    if ($color) {
+        $cardClasses[] = "bg-{$color}";
+    }
+    
+    // Add border color variants
+    if ($borderColor) {
+        $cardClasses[] = "border-{$borderColor}";
+    }
+    
+    // Add text color
+    if ($textColor) {
+        $cardClasses[] = "text-{$textColor}";
+    }
+    
+    // Add shadows
+    if ($shadow) {
+        $cardClasses[] = "shadow-{$shadow}";
+    } elseif ($flat) {
+        $cardClasses[] = "shadow-none";
+    }
+    
+    // Add outlined style
+    if ($outlined) {
+        $cardClasses[] = "card-outline";
+    }
+    
+    // Add custom width/height
+    if ($width) {
+        $cardClasses[] = $width;
+    }
+    
+    if ($height) {
+        $cardClasses[] = $height;
+    }
+    
+    // Add group class if specified
+    if ($group) {
+        $cardClasses[] = "card-group-{$group}";
+    }
+    
+    // Add custom classes
+    if ($cardClass) {
+        $cardClasses[] = $cardClass;
+    }
+    
+    // Add collapsed class if initially collapsed
+    if ($collapsed && $collapsible) {
+        $cardClasses[] = 'collapsed';
+    }
+    
+    // Format classes string
+    $cardClassString = implode(' ', $cardClasses);
+    
+    // Handle draggable functionality
+    $draggableAttrs = $draggable ? 'draggable="true" data-draggable="true"' : '';
+    
+    // Generate collapse target ID
+    $collapseTargetId = $id . '-body';
+@endphp
+
+<div 
+    id="{{ $id }}" 
+    class="{{ $cardClassString }}"
+    @if($draggable) {!! $draggableAttrs !!} @endif
+    @if($group) data-card-group="{{ $group }}" @endif
+    role="region"
+    @if($title) aria-labelledby="{{ $id }}-title" @endif
+>
+    @if($loading && $backdrop)
+        <div class="card-loading-overlay" id="{{ $id }}-loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    @endif
+    
+    @if($title || $icon || $headerActions || $collapsible)
+        <div class="card-header {{ $headerClass }} @if($draggable) draggable-handle @endif">
+            <div class="card-title-wrapper">
+                @if($icon)
+                    <div class="card-icon">
+                        <i class="{{ $icon }}"></i>
+                    </div>
+                @endif
+                
+                @if($title)
+                    <h4 class="card-title" id="{{ $id }}-title">{{ $title }}</h4>
+                    @if($subtitle)
+                        <div class="card-subtitle text-muted">{{ $subtitle }}</div>
+                    @endif
+                @endif
+            </div>
+            
+            <div class="card-header-actions">
+                @if(!empty($headerActions))
+                    @foreach($headerActions as $action)
+                        <button 
+                            type="button" 
+                            class="btn btn-icon {{ $action['class'] ?? 'btn-outline-secondary btn-sm' }}"
+                            @if(isset($action['id'])) id="{{ $action['id'] }}" @endif
+                            @if(isset($action['title'])) title="{{ $action['title'] }}" @endif
+                            @if(isset($action['action'])) onclick="{{ $action['action'] }}" @endif
+                            @if(isset($action['attributes']))
+                                @foreach($action['attributes'] as $attr => $value)
+                                    {{ $attr }}="{{ $value }}"
+                                @endforeach
+                            @endif
+                        >
+                            @if(isset($action['icon']))
+                                <i class="{{ $action['icon'] }}"></i>
+                            @endif
+                            @if(isset($action['label']))
+                                <span>{{ $action['label'] }}</span>
+                            @endif
+                        </button>
+                    @endforeach
+                @endif
+                
+                @if($collapsible)
+                    <button 
+                        type="button" 
+                        class="btn btn-icon btn-sm btn-outline-secondary collapse-btn"
+                        data-bs-toggle="collapse" 
+                        data-bs-target="#{{ $collapseTargetId }}" 
+                        aria-expanded="{{ $collapsed ? 'false' : 'true' }}" 
+                        aria-controls="{{ $collapseTargetId }}"
+                        title="Collapse/Expand"
+                    >
+                        <i class="fas fa-chevron-{{ $collapsed ? 'down' : 'up' }}"></i>
+                        <span class="visually-hidden">Toggle card content</span>
+                    </button>
+                @endif
+            </div>
+        </div>
+    @endif
+    
+    <div 
+        id="{{ $collapseTargetId }}" 
+        class="card-body {{ $bodyClass }} @if($collapsible) collapse @if(!$collapsed) show @endif @endif"
+    >
+        @if($loading && !$backdrop)
+            <div class="d-flex justify-content-center mb-2">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        @endif
+        
+        {{ $slot }}
+    </div>
+    
+    @if(isset($footer) || !empty($footerActions))
+        <div class="card-footer {{ $footerClass }}">
+            <div class="d-flex justify-content-between align-items-center">
+                @if(isset($footer))
+                    <div class="card-footer-content">
+                        {{ $footer }}
+                    </div>
+                @endif
+                
+                @if(!empty($footerActions))
+                    <div class="card-footer-actions">
+                        @foreach($footerActions as $action)
+                            <button 
+                                type="button" 
+                                class="btn {{ $action['class'] ?? 'btn-outline-secondary' }}"
+                                @if(isset($action['id'])) id="{{ $action['id'] }}" @endif
+                                @if(isset($action['title'])) title="{{ $action['title'] }}" @endif
+                                @if(isset($action['action'])) onclick="{{ $action['action'] }}" @endif
+                                @if(isset($action['attributes']))
+                                    @foreach($action['attributes'] as $attr => $value)
+                                        {{ $attr }}="{{ $value }}"
+                                    @endforeach
+                                @endif
+                            >
+                                @if(isset($action['icon']))
+                                    <i class="{{ $action['icon'] }} me-1"></i>
+                                @endif
+                                @if(isset($action['label']))
+                                    {{ $action['label'] }}
+                                @endif
+                            </button>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        </div>
+    @endif
+    
+    @if(!empty($actions))
+        <div class="card-actions">
+            @foreach($actions as $action)
+                <button 
+                    type="button" 
+                    class="btn card-action-btn {{ $action['class'] ?? 'btn-primary' }}"
+                    @if(isset($action['id'])) id="{{ $action['id'] }}" @endif
+                    @if(isset($action['title'])) title="{{ $action['title'] }}" @endif
+                    @if(isset($action['action'])) onclick="{{ $action['action'] }}" @endif
+                    @if(isset($action['attributes']))
+                        @foreach($action['attributes'] as $attr => $value)
+                            {{ $attr }}="{{ $value }}"
+                        @endforeach
+                    @endif
+                >
+                    @if(isset($action['icon']))
+                        <i class="{{ $action['icon'] }} me-1"></i>
+                    @endif
+                    @if(isset($action['label']))
+                        {{ $action['label'] }}
+                    @endif
+                </button>
+            @endforeach
+        </div>
+    @endif
+</div>
+
+@once
+    @push('scripts')
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize collapsible cards
+        document.querySelectorAll('.card .collapse-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const icon = this.querySelector('i');
+                if (icon) {
+                    if (icon.classList.contains('fa-chevron-up')) {
+                        icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+                    } else {
+                        icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+                    }
+                }
+            });
+        });
+        
+        // Initialize draggable cards
+        const draggableCards = document.querySelectorAll('.card[draggable="true"]');
+        if (draggableCards.length > 0) {
+            initDraggableCards(draggableCards);
+        }
+        
+        // Initialize card groups
+        const cardGroups = {};
+        document.querySelectorAll('[data-card-group]').forEach(card => {
+            const groupName = card.dataset.cardGroup;
+            if (!cardGroups[groupName]) {
+                cardGroups[groupName] = [];
+            }
+            cardGroups[groupName].push(card);
+        });
+        
+        // Initialize each card group
+        Object.keys(cardGroups).forEach(groupName => {
+            setupCardGroup(groupName, cardGroups[groupName]);
+        });
+        
+        /**
+         * Initialize draggable functionality for cards
+         */
+        function initDraggableCards(cards) {
+            cards.forEach(card => {
+                card.addEventListener('dragstart', handleDragStart);
+                card.addEventListener('dragend', handleDragEnd);
+                
+                // Use header as drag handle if available
+                const header = card.querySelector('.card-header');
+                if (header) {
+                    header.classList.add('cursor-move');
+                }
+            });
+            
+            // Add drop zone event listeners
+            document.addEventListener('dragover', handleDragOver);
+            document.addEventListener('drop', handleDrop);
+        }
+        
+        function handleDragStart(e) {
+            this.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', this.id);
+            e.dataTransfer.effectAllowed = 'move';
+            
+            // Create a ghost image (optional)
+            const ghost = this.cloneNode(true);
+            ghost.style.opacity = '0.5';
+            ghost.style.position = 'absolute';
+            ghost.style.top = '-1000px';
+            document.body.appendChild(ghost);
+            e.dataTransfer.setDragImage(ghost, 0, 0);
+            
+            // Remove ghost after a short delay
+            setTimeout(() => {
+                document.body.removeChild(ghost);
+            }, 0);
+        }
+        
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.drag-over').forEach(el => {
+                el.classList.remove('drag-over');
+            });
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            const dragTarget = getDragTarget(e.target);
+            if (dragTarget) {
+                dragTarget.classList.add('drag-over');
+            }
+            
+            // Remove drag-over class from other elements
+            document.querySelectorAll('.drag-over').forEach(el => {
+                if (el !== dragTarget) {
+                    el.classList.remove('drag-over');
+                }
+            });
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            
+            const id = e.dataTransfer.getData('text/plain');
+            const draggableElement = document.getElementById(id);
+            const dropTarget = getDragTarget(e.target);
+            
+            if (draggableElement && dropTarget && dropTarget !== draggableElement) {
+                // Check if they belong to the same group
+                const sourceGroup = draggableElement.dataset.cardGroup;
+                const targetGroup = dropTarget.dataset.cardGroup;
+                
+                if (sourceGroup && targetGroup && sourceGroup === targetGroup) {
+                    const dropRect = dropTarget.getBoundingClientRect();
+                    const dropMiddleY = dropRect.y + (dropRect.height / 2);
+                    
+                    // Insert before or after based on the mouse position
+                    if (e.clientY < dropMiddleY) {
+                        dropTarget.parentNode.insertBefore(draggableElement, dropTarget);
+                    } else {
+                        dropTarget.parentNode.insertBefore(draggableElement, dropTarget.nextSibling);
+                    }
+                    
+                    // Trigger event for card reordering
+                    const event = new CustomEvent('card:reordered', {
+                        detail: {
+                            card: draggableElement,
+                            group: sourceGroup,
+                            newOrder: getCardOrder(sourceGroup)
+                        }
+                    });
+                    document.dispatchEvent(event);
+                }
+            }
+            
+            document.querySelectorAll('.drag-over').forEach(el => {
+                el.classList.remove('drag-over');
+            });
+        }
+        
+        function getDragTarget(element) {
+            // Find closest card element from drop target
+            while (element && !element.classList.contains('card')) {
+                element = element.parentElement;
+            }
+            return element;
+        }
+        
+        function getCardOrder(groupName) {
+            const cards = document.querySelectorAll(`.card[data-card-group="${groupName}"]`);
+            return Array.from(cards).map(card => card.id);
+        }
+        
+        /**
+         * Setup card group functionality
+         */
+        function setupCardGroup(groupName, cards) {
+            // Add group header/controls if needed
+            // For now just ensure all cards have the same height if desired
+            
+            // Trigger event for initialization
+            const event = new CustomEvent('cardgroup:initialized', {
+                detail: {
+                    group: groupName,
+                    cards: cards
+                }
+            });
+            document.dispatchEvent(event);
+        }
+        
+        /**
+         * Public API for cards
+         */
+        window.CardComponent = {
+            /**
+             * Show loading indicator for a card
+             */
+            showLoading: function(cardId) {
+                const card = document.getElementById(cardId);
+                if (card) {
+                    const loadingOverlay = card.querySelector('.card-loading-overlay');
+                    if (loadingOverlay) {
+                        loadingOverlay.style.display = 'flex';
+                    } else {
+                        // Create loading overlay if it doesn't exist
+                        const overlay = document.createElement('div');
+                        overlay.className = 'card-loading-overlay';
+                        overlay.id = `${cardId}-loading`;
+                        overlay.innerHTML = `
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>`;
+                        card.style.position = 'relative';
+                        card.appendChild(overlay);
+                    }
+                    card.classList.add('card-loading');
+                }
+            },
+            
+            /**
+             * Hide loading indicator for a card
+             */
+            hideLoading: function(cardId) {
+                const card = document.getElementById(cardId);
+                if (card) {
+                    const loadingOverlay = card.querySelector('.card-loading-overlay');
+                    if (loadingOverlay) {
+                        loadingOverlay.style.display = 'none';
+                    }
+                    card.classList.remove('card-loading');
+                }
+            },
+            
+            /**
+             * Collapse a card
+             */
+            collapse: function(cardId) {
+                const card = document.getElementById(cardId);
+                if (card) {
+                    const collapseButton = card.querySelector('.collapse-btn');
+                    if (collapseButton) {
+                        const isCollapsed = collapseButton.getAttribute('aria-expanded') === 'false';
+                        if (!isCollapsed) {
+                            collapseButton.click();
+                        }
+                    }
+                }
+            },
+            
+            /**
+             * Expand a card
+             */
+            expand: function(cardId) {
+                const card = document.getElementById(cardId);
+                if (card) {
+                    const collapseButton = card.querySelector('.collapse-btn');
+                    if (collapseButton) {
+                        const isCollapsed = collapseButton.getAttribute('aria-expanded') === 'false';
+                        if (isCollapsed) {
+                            collapseButton.click();
+                        }
+                    }
+                }
+            },
+            
+            /**
+             * Refresh card content by triggering a custom event
+             */
+            refresh: function(cardId, data) {
+                const card = document.getElementById(cardId);
+                if (card) {
+                    const event = new CustomEvent('card:refresh', {
+                        detail: {
+                            cardId: cardId,
+                            data: data || {}
+                        }
+                    });
+                    card.dispatchEvent(event);
+                }
+            }
+        };
+    });
+    </script>
+    @endpush
+
+    @push('styles')
+    <style>
+    /* Card styling */
+    .card {
+        position: relative;
+        margin-bottom: 1.5rem;
+        border-radius: 0.428rem;
+        box-shadow: 0 4px 24px 0 rgba(34, 41, 47, 0.1);
+        background-color: #fff;
+        transition: all 0.3s ease-in-out;
+    }
+    
+    .card.flat,
+    .card.shadow-none {
+        box-shadow: none;
+    }
+    
+    /* Card header styles */
+    .card-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #ebe9f1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .card-title-wrapper {
+        display: flex;
+        align-items: center;
+    }
+    
+    .card-icon {
+        margin-right: 0.75rem;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        color: #7367f0;
+    }
+    
+    .card-title {
+        margin-bottom: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    
+    .card-subtitle {
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+    
+    .card-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    /* Card body styles */
+    .card-body {
+        padding: 1.5rem;
+    }
+    
+    /* Card footer styles */
+    .card-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #ebe9f1;
+    }
+    
+    /* Card actions styles */
+    .card-actions {
+        padding: 0.75rem;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+    
+    /* Card variants */
+    .card-outline {
+        background-color: transparent;
+        box-shadow: none;
+    }
+    
+    /* Card loading overlay */
+    .card-loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10;
+        border-radius: 0.428rem;
+    }
+    
+    /* Draggable styles */
+    .cursor-move {
+        cursor: move;
+    }
+    
+    .card.dragging {
+        opacity: 0.4;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    }
+    
+    .card.drag-over {
+        border: 2px dashed #7367f0;
+    }
+    
+    /* Color variants */
+    .bg-primary { background-color: #7367f0 !important; color: #fff; }
+    .bg-secondary { background-color: #82868b !important; color: #fff; }
+    .bg-success { background-color: #28c76f !important; color: #fff; }
+    .bg-danger { background-color: #ea5455 !important; color: #fff; }
+    .bg-warning { background-color: #ff9f43 !important; color: #fff; }
+    .bg-info { background-color: #00cfe8 !important; color: #fff; }
+    .bg-dark { background-color: #4b4b4b !important; color: #fff; }
+    
+    /* Border color variants */
+    .border-primary { border-color: #7367f0 !important; }
+    .border-secondary { border-color: #82868b !important; }
+    .border-success { border-color: #28c76f !important; }
+    .border-danger { border-color: #ea5455 !important; }
+    .border-warning { border-color: #ff9f43 !important; }
+    .border-info { border-color: #00cfe8 !important; }
+    .border-dark { border-color: #4b4b4b !important; }
+    
+    /* Shadow variants */
+    .shadow-sm { box-shadow: 0 2px 8px 0 rgba(34, 41, 47, 0.08) !important; }
+    .shadow-md { box-shadow: 0 4px 16px 0 rgba(34, 41, 47, 0.15) !important; }
+    .shadow-lg { box-shadow: 0 8px 24px 0 rgba(34, 41, 47, 0.2) !important; }
+    
+    /* Focus styles for accessibility */
+    .card:focus-within {
+        outline: 2px solid #7367f0;
+        outline-offset: 2px;
+    }
+    
+    /* Responsive styles */
+    @media (max-width: 767.98px) {
+        .card-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .card-header-actions {
+            margin-top: 0.75rem;
+            width: 100%;
+            justify-content: flex-end;
+        }
+        
+        .card-title-wrapper {
+            width: 100%;
+        }
+        
+        .card-footer .d-flex {
+            flex-direction: column;
+        }
+        
+        .card-footer-actions {
+            margin-top: 0.75rem;
+            width: 100%;
+        }
+        
+        .card-footer-actions .btn {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+    }
+    </style>
+    @endpush
+@endonce

@@ -30,21 +30,21 @@ class SchemaHelper
     public static function getTableColumns(string $table, string $connection = null): array
     {
         $schema = Schema::connection($connection);
-
+        
         if (!$schema->hasTable($table)) {
             return [];
         }
-
+        
         $columns = [];
         $columnList = $schema->getColumnListing($table);
-
+        
         foreach ($columnList as $columnName) {
             $columns[$columnName] = self::getColumnDetails($table, $columnName, $connection);
         }
-
+        
         return $columns;
     }
-
+    
     /**
      * Get detailed information about a specific column.
      *
@@ -57,7 +57,7 @@ class SchemaHelper
     {
         $schema = Schema::connection($connection);
         $columnType = $schema->getColumnType($table, $column);
-
+        
         return [
             'name' => $column,
             'type' => $columnType,
@@ -84,7 +84,7 @@ class SchemaHelper
             $connection = Schema::getConnection($connection);
             $doctrineSchemaManager = $connection->getDoctrineSchemaManager();
             $indexes = $doctrineSchemaManager->listTableIndexes($table);
-
+            
             $formattedIndexes = [];
             foreach ($indexes as $name => $index) {
                 $formattedIndexes[$name] = [
@@ -94,7 +94,7 @@ class SchemaHelper
                     'primary' => $index->isPrimary(),
                 ];
             }
-
+            
             return $formattedIndexes;
         } catch (\Exception $e) {
             return [];
@@ -114,7 +114,7 @@ class SchemaHelper
             $connection = Schema::getConnection($connection);
             $doctrineSchemaManager = $connection->getDoctrineSchemaManager();
             $foreignKeys = $doctrineSchemaManager->listTableForeignKeys($table);
-
+            
             $formattedForeignKeys = [];
             foreach ($foreignKeys as $name => $foreignKey) {
                 $formattedForeignKeys[] = [
@@ -126,7 +126,7 @@ class SchemaHelper
                     'on_update' => $foreignKey->getOption('onUpdate'),
                 ];
             }
-
+            
             return $formattedForeignKeys;
         } catch (\Exception $e) {
             return [];
@@ -143,13 +143,13 @@ class SchemaHelper
     public static function getPrimaryKey(string $table, string $connection = null)
     {
         $indexes = self::getTableIndexes($table, $connection);
-
+        
         foreach ($indexes as $index) {
             if ($index['primary']) {
                 return count($index['columns']) === 1 ? $index['columns'][0] : $index['columns'];
             }
         }
-
+        
         return null;
     }
 
@@ -163,7 +163,7 @@ class SchemaHelper
     public static function hasTimestamps(string $table, string $connection = null): bool
     {
         return self::hasColumn($table, 'created_at', $connection) &&
-            self::hasColumn($table, 'updated_at', $connection);
+               self::hasColumn($table, 'updated_at', $connection);
     }
 
     /**
@@ -309,7 +309,7 @@ class SchemaHelper
         try {
             $connection = DB::connection($connection);
             $dbName = $connection->getDatabaseName();
-
+            
             // This varies by database driver, this example works for MySQL/MariaDB
             if ($connection->getDriverName() === 'mysql') {
                 $result = $connection->select("
@@ -324,7 +324,7 @@ class SchemaHelper
                     return $matches[1] ?? [];
                 }
             }
-
+            
             return [];
         } catch (\Exception $e) {
             return [];
@@ -380,7 +380,7 @@ class SchemaHelper
         try {
             $doctrineColumn = Schema::getConnection($connection)
                 ->getDoctrineColumn($table, $column);
-
+            
             return $doctrineColumn->getAutoincrement();
         } catch (\Exception $e) {
             return false;

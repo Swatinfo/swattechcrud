@@ -1,0 +1,853 @@
+{{-- 
+Component Class: SwatTech\Crud\View\Components\Filter
+
+Properties:
+    - id: string - Unique identifier for the filter component (default: auto-generated)
+    - model: string - The model class to filter
+    - fields: array - Filterable fields configuration
+    - action: string - Form action URL
+    - method: string - Form method (default: GET)
+    - expanded: boolean - Whether the filter is initially expanded (default: false)
+    - enableSave: boolean - Allow saving filter presets (default: true)
+    - enableGroups: boolean - Allow filter groups with AND/OR logic (default: true)
+    - enableSearch: boolean - Include search field (default: true)
+    - allowedOperators: array - Allowed operator types (default: all)
+    - buttonClass: string - CSS class for buttons (default: btn-primary)
+    - maxGroups: int - Maximum number of filter groups allowed (default: 5)
+    - maxConditions: int - Maximum number of conditions per group (default: 10)
+    - savedFilters: array - Saved filter configurations
+--}}
+
+@props([
+    'id' => 'filter-'.uniqid(),
+    'model' => null,
+    'fields' => [],
+    'action' => null,
+    'method' => 'GET',
+    'expanded' => false,
+    'enableSave' => true,
+    'enableGroups' => true,
+    'enableSearch' => true,
+    'allowedOperators' => null,
+    'buttonClass' => 'btn-primary',
+    'maxGroups' => 5,
+    'maxConditions' => 10,
+    'savedFilters' => []
+])
+
+@php
+    // Default fields if not provided
+    if (empty($fields) && $model) {
+        $modelInstance = new $model();
+        // Try to get filterable fields from the model
+        $fields = method_exists($modelInstance, 'getFilterableFields') 
+            ? $modelInstance->getFilterableFields() 
+            : [];
+    }
+
+    // Default operators - can be limited by passing allowedOperators
+    $operators = [
+        'string' => [
+            'equals' => 'Equals',
+            'not_equals' => 'Not Equals',
+            'contains' => 'Contains',
+            'starts_with' => 'Starts With',
+            'ends_with' => 'Ends With',
+            'is_empty' => 'Is Empty',
+            'is_not_empty' => 'Is Not Empty'
+        ],
+        'numeric' => [
+            'equals' => 'Equals',
+            'not_equals' => 'Not Equals',
+            'greater_than' => 'Greater Than',
+            'greater_than_or_equal' => 'Greater Than or Equal',
+            'less_than' => 'Less Than',
+            'less_than_or_equal' => 'Less Than or Equal',
+            'is_empty' => 'Is Empty',
+            'is_not_empty' => 'Is Not Empty'
+        ],
+        'date' => [
+            'equals' => 'Equals',
+            'not_equals' => 'Not Equals',
+            'greater_than' => 'After',
+            'less_than' => 'Before',
+            'between' => 'Between',
+            'is_empty' => 'Is Empty',
+            'is_not_empty' => 'Is Not Empty'
+        ],
+        'boolean' => [
+            'equals' => 'Equals',
+            'not_equals' => 'Not Equals'
+        ]
+    ];
+
+    // Get existing filter values from request
+    $existingFilters = request('filter', []);
+    $existingSearch = request('search', '');
+    $existingLogic = request('filter_logic', 'and');
+@endphp
+
+<div 
+    id="{{ $id }}" 
+    class="filter-component card mb-3" 
+    data-max-groups="{{ $maxGroups }}" 
+    data-max-conditions="{{ $maxConditions }}" 
+    {{ $attributes }}
+>
+    <div class="card-header d-flex justify-content-between align-items-center p-2">
+        <h5 class="card-title mb-0">
+            <i class="fa fa-filter me-1" aria-hidden="true"></i>
+            <span>Advanced Filters</span>
+        </h5>
+        <div class="filter-actions">
+            <button 
+                type="button" 
+                class="btn btn-sm btn-outline-secondary" 
+                data-bs-toggle="collapse" 
+                data-bs-target="#{{ $id }}-content" 
+                aria-expanded="{{ $expanded ? 'true' : 'false' }}" 
+                aria-controls="{{ $id }}-content"
+            >
+                <i class="fa fa-chevron-{{ $expanded ? 'up' : 'down' }} toggle-icon" aria-hidden="true"></i>
+                <span class="visually-hidden">Toggle Filters</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="collapse {{ $expanded ? 'show' : '' }}" id="{{ $id }}-content">
+        <div class="card-body">
+            <form id="{{ $id }}-form" action="{{ $action ?? request()->url() }}" method="{{ $method }}" class="filter-form">
+                <!-- Search Field -->
+                @if($enableSearch)
+                <div class="mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text" id="{{ $id }}-search-label">
+                            <i class="fa fa-search" aria-hidden="true"></i>
+                        </span>
+                        <input 
+                            type="text" 
+                            name="search" 
+                            id="{{ $id }}-search" 
+                            class="form-control" 
+                            placeholder="Search..." 
+                            value="{{ $existingSearch }}"
+                            aria-label="Search"
+                            aria-describedby="{{ $id }}-search-label"
+                        >
+                    </div>
+                </div>
+                @endif
+
+                <!-- Filter Groups Container -->
+                <div id="{{ $id }}-filter-groups" class="filter-groups">
+                    <!-- Initial Filter Group -->
+                    <div class="filter-group card mb-3" data-group-id="0">
+                        <div class="card-header p-2 d-flex justify-content-between align-items-center">
+                            <div class="group-logic-selector">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Filter logic">
+                                    <input type="radio" class="btn-check" name="filter_logic" id="{{ $id }}-logic-and" value="and" {{ $existingLogic == 'and' ? 'checked' : '' }}>
+                                    <label class="btn btn-outline-primary" for="{{ $id }}-logic-and">AND</label>
+
+                                    <input type="radio" class="btn-check" name="filter_logic" id="{{ $id }}-logic-or" value="or" {{ $existingLogic == 'or' ? 'checked' : '' }}>
+                                    <label class="btn btn-outline-primary" for="{{ $id }}-logic-or">OR</label>
+                                </div>
+                            </div>
+                            <div class="group-actions">
+                                @if($enableGroups && $maxGroups > 1)
+                                <button type="button" class="btn btn-sm btn-outline-secondary add-group" title="Add Group">
+                                    <i class="fa fa-plus-circle" aria-hidden="true"></i>
+                                    <span class="visually-hidden">Add Group</span>
+                                </button>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="filter-conditions">
+                                <div class="filter-condition row g-2 align-items-center mb-2">
+                                    <!-- Field Selector -->
+                                    <div class="col-md-3">
+                                        <select name="filter[0][field]" class="form-select field-select" aria-label="Field">
+                                            <option value="">Select Field</option>
+                                            @foreach($fields as $field => $config)
+                                                <option 
+                                                    value="{{ $field }}"
+                                                    data-type="{{ $config['type'] ?? 'string' }}"
+                                                    {{ isset($existingFilters[0]['field']) && $existingFilters[0]['field'] == $field ? 'selected' : '' }}
+                                                >
+                                                    {{ $config['label'] ?? ucwords(str_replace('_', ' ', $field)) }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    <!-- Operator Selector -->
+                                    <div class="col-md-3">
+                                        <select name="filter[0][operator]" class="form-select operator-select" aria-label="Operator">
+                                            <option value="">Select Operator</option>
+                                            <!-- Operators will be populated via JavaScript based on field type -->
+                                        </select>
+                                    </div>
+
+                                    <!-- Value Input (dynamically replaced based on field/operator) -->
+                                    <div class="col-md-5">
+                                        <div class="value-container">
+                                            <input type="text" name="filter[0][value]" class="form-control" placeholder="Value" aria-label="Value">
+                                        </div>
+                                    </div>
+
+                                    <!-- Action Buttons -->
+                                    <div class="col-md-1 text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-condition" title="Remove Condition">
+                                            <i class="fa fa-times" aria-hidden="true"></i>
+                                            <span class="visually-hidden">Remove Condition</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Add Condition Button -->
+                            <div class="add-condition-container mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary add-condition">
+                                    <i class="fa fa-plus" aria-hidden="true"></i> Add Condition
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filter Actions and Save -->
+                <div class="filter-actions d-flex justify-content-between align-items-center">
+                    <div class="filter-submit-buttons">
+                        <button type="submit" class="btn {{ $buttonClass }} me-2">
+                            <i class="fa fa-filter me-1" aria-hidden="true"></i> Apply Filters
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary clear-filters">
+                            <i class="fa fa-times me-1" aria-hidden="true"></i> Clear Filters
+                        </button>
+                    </div>
+
+                    @if($enableSave)
+                    <div class="saved-filters-container dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="{{ $id }}-saved-filters-menu" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-bookmark me-1" aria-hidden="true"></i> Saved Filters
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="{{ $id }}-saved-filters-menu">
+                            @if(count($savedFilters) > 0)
+                                @foreach($savedFilters as $name => $savedFilter)
+                                <li>
+                                    <a class="dropdown-item saved-filter-item" href="#" data-filter="{{ json_encode($savedFilter) }}">
+                                        {{ $name }}
+                                    </a>
+                                </li>
+                                @endforeach
+                                <li><hr class="dropdown-divider"></li>
+                            @endif
+                            <li>
+                                <a class="dropdown-item save-current-filter" href="#">
+                                    <i class="fa fa-save me-1" aria-hidden="true"></i> Save Current Filter
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    @endif
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Save Filter Modal -->
+@if($enableSave)
+<div class="modal fade" id="{{ $id }}-save-filter-modal" tabindex="-1" aria-labelledby="{{ $id }}-save-filter-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="{{ $id }}-save-filter-modal-label">Save Filter</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="{{ $id }}-save-filter-form">
+                    <div class="mb-3">
+                        <label for="{{ $id }}-filter-name" class="form-label">Filter Name</label>
+                        <input type="text" class="form-control" id="{{ $id }}-filter-name" required>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="{{ $id }}-filter-is-default">
+                        <label class="form-check-label" for="{{ $id }}-filter-is-default">Set as default filter</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary save-filter-confirm">Save Filter</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+@once
+    @push('scripts')
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterComponent = document.getElementById('{{ $id }}');
+        if (!filterComponent) return;
+
+        const operatorsByType = @json($operators);
+        const fields = @json($fields);
+
+        // Find DOM elements
+        const form = document.getElementById('{{ $id }}-form');
+        const filterGroups = document.getElementById('{{ $id }}-filter-groups');
+        const clearFiltersBtn = filterComponent.querySelector('.clear-filters');
+        const addGroupBtns = filterComponent.querySelectorAll('.add-group');
+
+        // Initialize event listeners
+        initializeFilterEvents();
+        initializeExistingFilters();
+
+        // Set up event listeners
+        function initializeFilterEvents() {
+            // Add condition button click
+            filterComponent.addEventListener('click', function(e) {
+                if (e.target.closest('.add-condition')) {
+                    const group = e.target.closest('.filter-group');
+                    const groupId = group.dataset.groupId;
+                    const conditions = group.querySelector('.filter-conditions');
+                    const conditionsCount = conditions.querySelectorAll('.filter-condition').length;
+                    
+                    if (conditionsCount < {{ $maxConditions }}) {
+                        addCondition(conditions, groupId, conditionsCount);
+                    } else {
+                        alert('Maximum conditions reached for this group');
+                    }
+                }
+            });
+
+            // Remove condition button click
+            filterComponent.addEventListener('click', function(e) {
+                if (e.target.closest('.remove-condition')) {
+                    const condition = e.target.closest('.filter-condition');
+                    const group = condition.closest('.filter-group');
+                    const conditions = group.querySelector('.filter-conditions');
+                    
+                    if (conditions.querySelectorAll('.filter-condition').length > 1) {
+                        condition.remove();
+                        updateConditionIndexes(group);
+                    } else {
+                        // Don't remove the last condition, just reset it
+                        const fieldSelect = condition.querySelector('.field-select');
+                        const operatorSelect = condition.querySelector('.operator-select');
+                        const valueInput = condition.querySelector('input[type="text"]');
+                        
+                        if (fieldSelect) fieldSelect.value = '';
+                        if (operatorSelect) operatorSelect.value = '';
+                        if (valueInput) valueInput.value = '';
+                    }
+                }
+            });
+
+            // Add group button click
+            if (addGroupBtns) {
+                addGroupBtns.forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const groupsCount = filterGroups.querySelectorAll('.filter-group').length;
+                        if (groupsCount < {{ $maxGroups }}) {
+                            addGroup(groupsCount);
+                        } else {
+                            alert('Maximum groups reached');
+                        }
+                    });
+                });
+            }
+
+            // Clear filters button click
+            if (clearFiltersBtn) {
+                clearFiltersBtn.addEventListener('click', function() {
+                    // Reset form fields
+                    form.reset();
+                    
+                    // Clear all filter groups except the first one
+                    const groups = filterGroups.querySelectorAll('.filter-group');
+                    for (let i = 1; i < groups.length; i++) {
+                        groups[i].remove();
+                    }
+                    
+                    // Reset first group to default state
+                    const firstGroup = groups[0];
+                    const conditions = firstGroup.querySelector('.filter-conditions');
+                    const firstCondition = conditions.querySelector('.filter-condition');
+                    
+                    // Clear all conditions except the first one
+                    conditions.querySelectorAll('.filter-condition').forEach((el, index) => {
+                        if (index > 0) el.remove();
+                    });
+                    
+                    // Reset the first condition inputs
+                    const fieldSelect = firstCondition.querySelector('.field-select');
+                    const operatorSelect = firstCondition.querySelector('.operator-select');
+                    const valueContainer = firstCondition.querySelector('.value-container');
+                    
+                    fieldSelect.value = '';
+                    operatorSelect.innerHTML = '<option value="">Select Operator</option>';
+                    valueContainer.innerHTML = '<input type="text" name="filter[0][value]" class="form-control" placeholder="Value" aria-label="Value">';
+                });
+            }
+
+            // Field select change event
+            filterComponent.addEventListener('change', function(e) {
+                const fieldSelect = e.target.closest('.field-select');
+                if (fieldSelect) {
+                    const condition = fieldSelect.closest('.filter-condition');
+                    const operatorSelect = condition.querySelector('.operator-select');
+                    const valueContainer = condition.querySelector('.value-container');
+                    
+                    // Get field type
+                    const fieldType = fieldSelect.options[fieldSelect.selectedIndex].dataset.type || 'string';
+                    
+                    // Update operators based on field type
+                    updateOperators(operatorSelect, fieldType);
+                    
+                    // Reset value container
+                    resetValueContainer(valueContainer, condition);
+                }
+            });
+
+            // Operator select change event
+            filterComponent.addEventListener('change', function(e) {
+                const operatorSelect = e.target.closest('.operator-select');
+                if (operatorSelect) {
+                    const condition = operatorSelect.closest('.filter-condition');
+                    const fieldSelect = condition.querySelector('.field-select');
+                    const valueContainer = condition.querySelector('.value-container');
+                    const operator = operatorSelect.value;
+                    
+                    // Get field config
+                    const fieldName = fieldSelect.value;
+                    const fieldConfig = fields[fieldName] || {};
+                    const fieldType = fieldSelect.options[fieldSelect.selectedIndex].dataset.type || 'string';
+                    
+                    // Update value input based on operator
+                    updateValueInput(valueContainer, operator, fieldType, fieldConfig, condition);
+                }
+            });
+
+            // Save filter button click
+            const saveFilterBtn = filterComponent.querySelector('.save-current-filter');
+            if (saveFilterBtn) {
+                saveFilterBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const modal = document.getElementById('{{ $id }}-save-filter-modal');
+                    const bsModal = new bootstrap.Modal(modal);
+                    bsModal.show();
+                });
+            }
+
+            // Save filter confirm button click
+            const saveFilterConfirmBtn = document.querySelector('.save-filter-confirm');
+            if (saveFilterConfirmBtn) {
+                saveFilterConfirmBtn.addEventListener('click', function() {
+                    const filterName = document.getElementById('{{ $id }}-filter-name').value;
+                    if (!filterName) {
+                        alert('Please enter a filter name');
+                        return;
+                    }
+                    
+                    // Serialize the form data
+                    const formData = new FormData(form);
+                    const filterData = {};
+                    
+                    for (let [key, value] of formData.entries()) {
+                        filterData[key] = value;
+                    }
+                    
+                    // Save the filter using AJAX
+                    fetch("{{ route('filters.save') ?? '/' }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({
+                            name: filterName,
+                            model: "{{ $model }}",
+                            filter: filterData,
+                            is_default: document.getElementById('{{ $id }}-filter-is-default').checked
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Close the modal
+                            bootstrap.Modal.getInstance(document.getElementById('{{ $id }}-save-filter-modal')).hide();
+                            
+                            // Refresh the page to show the saved filter
+                            window.location.reload();
+                        } else {
+                            alert(data.message || 'Error saving filter');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error saving filter');
+                    });
+                });
+            }
+
+            // Load saved filter
+            const savedFilterItems = filterComponent.querySelectorAll('.saved-filter-item');
+            if (savedFilterItems) {
+                savedFilterItems.forEach(item => {
+                    item.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const filterData = JSON.parse(this.dataset.filter);
+                        
+                        // Apply the filter data to the form
+                        // This is a simplified version - in a real implementation,
+                        // you'd need to rebuild the form structure based on the saved filter
+                        for (const [key, value] of Object.entries(filterData)) {
+                            const input = form.querySelector(`[name="${key}"]`);
+                            if (input) {
+                                input.value = value;
+                            }
+                        }
+                        
+                        // Submit the form to apply the filter
+                        form.submit();
+                    });
+                });
+            }
+        }
+
+        function initializeExistingFilters() {
+            // Load existing filters from request
+            const existingFilters = @json($existingFilters);
+            if (!existingFilters || Object.keys(existingFilters).length === 0) {
+                return;
+            }
+            
+            // Reset the filter container
+            const groups = filterGroups.querySelectorAll('.filter-group');
+            for (let i = 1; i < groups.length; i++) {
+                groups[i].remove();
+            }
+            
+            // Parse and apply existing filters
+            // This is a simplified version - in a real implementation,
+            // you'd need to rebuild the form structure based on the filter data
+            // and handle multiple groups and conditions
+        }
+
+        function addCondition(conditionsContainer, groupId, conditionIndex) {
+            const newConditionId = conditionIndex;
+            const newCondition = document.createElement('div');
+            newCondition.className = 'filter-condition row g-2 align-items-center mb-2';
+            newCondition.innerHTML = `
+                <div class="col-md-3">
+                    <select name="filter[${groupId}][conditions][${newConditionId}][field]" class="form-select field-select" aria-label="Field">
+                        <option value="">Select Field</option>
+                        ${Object.entries(fields).map(([field, config]) => `
+                            <option value="${field}" data-type="${config.type || 'string'}">
+                                ${config.label || field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="filter[${groupId}][conditions][${newConditionId}][operator]" class="form-select operator-select" aria-label="Operator">
+                        <option value="">Select Operator</option>
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <div class="value-container">
+                        <input type="text" name="filter[${groupId}][conditions][${newConditionId}][value]" class="form-control" placeholder="Value" aria-label="Value">
+                    </div>
+                </div>
+                <div class="col-md-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-condition" title="Remove Condition">
+                        <i class="fa fa-times" aria-hidden="true"></i>
+                        <span class="visually-hidden">Remove Condition</span>
+                    </button>
+                </div>
+            `;
+            conditionsContainer.appendChild(newCondition);
+        }
+
+        function addGroup(groupIndex) {
+            const newGroupId = groupIndex;
+            const newGroup = document.createElement('div');
+            newGroup.className = 'filter-group card mb-3';
+            newGroup.dataset.groupId = newGroupId;
+            newGroup.innerHTML = `
+                <div class="card-header p-2 d-flex justify-content-between align-items-center">
+                    <span>Group ${newGroupId + 1}</span>
+                    <div class="group-actions">
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-group" title="Remove Group">
+                            <i class="fa fa-times" aria-hidden="true"></i>
+                            <span class="visually-hidden">Remove Group</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-2">
+                    <div class="filter-conditions">
+                        <div class="filter-condition row g-2 align-items-center mb-2">
+                            <div class="col-md-3">
+                                <select name="filter[${newGroupId}][conditions][0][field]" class="form-select field-select" aria-label="Field">
+                                    <option value="">Select Field</option>
+                                    ${Object.entries(fields).map(([field, config]) => `
+                                        <option value="${field}" data-type="${config.type || 'string'}">
+                                            ${config.label || field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                        </option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select name="filter[${newGroupId}][conditions][0][operator]" class="form-select operator-select" aria-label="Operator">
+                                    <option value="">Select Operator</option>
+                                </select>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="value-container">
+                                    <input type="text" name="filter[${newGroupId}][conditions][0][value]" class="form-control" placeholder="Value" aria-label="Value">
+                                </div>
+                            </div>
+                            <div class="col-md-1 text-end">
+                                <button type="button" class="btn btn-sm btn-outline-danger remove-condition" title="Remove Condition">
+                                    <i class="fa fa-times" aria-hidden="true"></i>
+                                    <span class="visually-hidden">Remove Condition</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="add-condition-container mt-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary add-condition">
+                            <i class="fa fa-plus" aria-hidden="true"></i> Add Condition
+                        </button>
+                    </div>
+                </div>
+            `;
+            filterGroups.appendChild(newGroup);
+            
+            // Add remove group handler
+            const removeGroupBtn = newGroup.querySelector('.remove-group');
+            if (removeGroupBtn) {
+                removeGroupBtn.addEventListener('click', function() {
+                    newGroup.remove();
+                });
+            }
+        }
+
+        function updateOperators(operatorSelect, fieldType) {
+            operatorSelect.innerHTML = '<option value="">Select Operator</option>';
+            
+            const operators = operatorsByType[fieldType] || operatorsByType.string;
+            
+            for (const [key, label] of Object.entries(operators)) {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = label;
+                operatorSelect.appendChild(option);
+            }
+        }
+
+        function resetValueContainer(valueContainer, condition) {
+            const name = condition.querySelector('.field-select').name.replace('[field]', '[value]');
+            valueContainer.innerHTML = `<input type="text" name="${name}" class="form-control" placeholder="Value" aria-label="Value">`;
+        }
+
+        function updateValueInput(valueContainer, operator, fieldType, fieldConfig, condition) {
+            const name = condition.querySelector('.field-select').name.replace('[field]', '[value]');
+            
+            // Handle operators that don't need value input (is_empty, is_not_empty)
+            if (['is_empty', 'is_not_empty'].includes(operator)) {
+                valueContainer.innerHTML = '<div class="form-text text-muted">No value needed</div>';
+                valueContainer.innerHTML += `<input type="hidden" name="${name}" value="">`;
+                return;
+            }
+            
+            // Handle between operator (needs two values)
+            if (operator === 'between' && fieldType === 'date') {
+                valueContainer.innerHTML = `
+                    <div class="input-group">
+                                                <input type="date" name="${name}[from]" class="form-control" placeholder="From" aria-label="From Date">
+                        <span class="input-group-text">to</span>
+                        <input type="date" name="${name}[to]" class="form-control" placeholder="To" aria-label="To Date">
+                    </div>
+                `;
+                return;
+            }
+            
+            // Handle field type specific inputs
+            switch (fieldType) {
+                case 'boolean':
+                    valueContainer.innerHTML = `
+                        <select name="${name}" class="form-select" aria-label="Boolean Value">
+                            <option value="">Select Value</option>
+                            <option value="1">True</option>
+                            <option value="0">False</option>
+                        </select>
+                    `;
+                    break;
+                    
+                case 'date':
+                    valueContainer.innerHTML = `<input type="date" name="${name}" class="form-control" aria-label="Date Value">`;
+                    break;
+                    
+                case 'datetime':
+                    valueContainer.innerHTML = `<input type="datetime-local" name="${name}" class="form-control" aria-label="DateTime Value">`;
+                    break;
+                    
+                case 'numeric':
+                    valueContainer.innerHTML = `<input type="number" name="${name}" class="form-control" placeholder="Value" aria-label="Numeric Value">`;
+                    break;
+                
+                case 'select':
+                    if (fieldConfig.options) {
+                        const options = Object.entries(fieldConfig.options)
+                            .map(([value, label]) => `<option value="${value}">${label}</option>`)
+                            .join('');
+                        
+                        valueContainer.innerHTML = `
+                            <select name="${name}" class="form-select" aria-label="Select Value">
+                                <option value="">Select Value</option>
+                                ${options}
+                            </select>
+                        `;
+                    } else {
+                        valueContainer.innerHTML = `<input type="text" name="${name}" class="form-control" placeholder="Value" aria-label="Text Value">`;
+                    }
+                    break;
+                    
+                default:
+                    valueContainer.innerHTML = `<input type="text" name="${name}" class="form-control" placeholder="Value" aria-label="Text Value">`;
+            }
+        }
+
+        function updateConditionIndexes(group) {
+            const groupId = group.dataset.groupId;
+            const conditions = group.querySelectorAll('.filter-condition');
+            
+            conditions.forEach((condition, index) => {
+                // Update field name
+                const fieldSelect = condition.querySelector('.field-select');
+                if (fieldSelect) {
+                    fieldSelect.name = `filter[${groupId}][conditions][${index}][field]`;
+                }
+                
+                // Update operator name
+                const operatorSelect = condition.querySelector('.operator-select');
+                if (operatorSelect) {
+                    operatorSelect.name = `filter[${groupId}][conditions][${index}][operator]`;
+                }
+                
+                // Update value name - this is more complex as there could be different input types
+                const valueContainer = condition.querySelector('.value-container');
+                const inputs = valueContainer.querySelectorAll('input, select');
+                inputs.forEach(input => {
+                    // This regex handles both simple value inputs and range inputs
+                    const newName = input.name.replace(/filter\[\d+\]\[conditions\]\[\d+\](\[value\](?:\[\w+\])?)/, `filter[${groupId}][conditions][${index}]$1`);
+                    input.name = newName;
+                });
+            });
+        }
+    });
+    </script>
+    @endpush
+
+    @push('styles')
+    <style>
+        .filter-component {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .filter-group {
+            border: 1px solid rgba(0, 0, 0, 0.125);
+            transition: all 0.3s ease;
+        }
+
+        .filter-group:hover {
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+
+        .filter-condition {
+            position: relative;
+        }
+
+        .remove-condition, .remove-group {
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .remove-condition:hover, .remove-group:hover {
+            opacity: 1;
+        }
+
+        .group-logic-selector .btn-group {
+            box-shadow: none;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 767.98px) {
+            .filter-condition {
+                row-gap: 0.75rem !important;
+            }
+            
+            .filter-condition > [class*="col-"] {
+                margin-bottom: 0.5rem;
+            }
+            
+            .filter-condition > .col-md-1 {
+                position: absolute;
+                right: 0;
+                top: 0;
+            }
+            
+            .filter-actions {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .filter-submit-buttons,
+            .saved-filters-container {
+                width: 100%;
+                display: flex;
+            }
+            
+            .filter-submit-buttons button,
+            .saved-filters-container .dropdown {
+                flex: 1;
+            }
+        }
+
+        /* Accessibility improvements */
+        .btn:focus-visible,
+        select:focus-visible,
+        input:focus-visible {
+            outline: 2px solid #7367f0;
+            outline-offset: 2px;
+            box-shadow: none;
+        }
+
+        /* Animation for adding/removing conditions */
+        .filter-condition {
+            animation: fade-in 0.3s ease-in-out;
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Styling for complex form elements */
+        .input-group-text {
+            background-color: #f8f8f8;
+        }
+        
+        .saved-filters-container .dropdown-menu {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+    @endpush
+@endonce

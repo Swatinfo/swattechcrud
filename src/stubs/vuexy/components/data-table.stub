@@ -1,0 +1,749 @@
+{{-- 
+Component Class: SwatTech\Crud\View\Components\DataTable
+
+Properties:
+    - id: string - Unique identifier for the table
+    - columns: array - List of columns with configuration
+    - data: Collection|array - Data to display in the table
+    - sortable: bool - Whether sorting is enabled (default: true)
+    - searchable: bool - Whether search is enabled (default: true)
+    - selectable: bool - Whether row selection is enabled (default: true)
+    - expandable: bool - Whether row expansion is enabled (default: false)
+    - inlineEditable: bool - Whether inline editing is enabled (default: false)
+    - actions: array - List of actions for action column
+    - pagination: bool - Whether pagination is enabled (default: true)
+    - perPage: int - Number of rows per page (default: 10)
+    - responsive: bool - Whether responsive design is enabled (default: true)
+    - emptyMessage: string - Message to show when no data is available
+    - loadingMessage: string - Message to show when data is loading
+
+Methods:
+    - sort($column): void - Sort the data by the given column
+    - search($query): void - Search the data for the given query
+    - paginate(): LengthAwarePaginator - Get the paginated data
+    - getSelectedRows(): array - Get the selected rows
+    - getExpandedRow($id): mixed - Get the expanded data for a row
+    - renderColumnValue($row, $column): string - Render a column value
+    - isColumnSortable($column): bool - Check if a column is sortable
+--}}
+
+@props([
+    'id' => 'data-table-'.uniqid(),
+    'columns' => [],
+    'data' => [],
+    'sortable' => true,
+    'searchable' => true,
+    'selectable' => true,
+    'expandable' => false,
+    'inlineEditable' => false,
+    'actions' => ['view', 'edit', 'delete'],
+    'pagination' => true,
+    'perPage' => 10,
+    'responsive' => true,
+    'emptyMessage' => 'No records found',
+    'loadingMessage' => 'Loading data...',
+    'actionPermissions' => [],
+])
+
+<div {{ $attributes->merge(['class' => 'data-table-component']) }}>
+    {{-- Search and Tools Bar --}}
+    @if($searchable || $selectable)
+    <div class="data-table-header d-flex justify-content-between align-items-center mb-1">
+        @if($searchable)
+        <div class="data-table-search">
+            <div class="input-group">
+                <span class="input-group-text" id="{{ $id }}-search-addon">
+                    <i data-feather="search"></i>
+                </span>
+                <input 
+                    type="text"
+                    class="form-control search-input"
+                    placeholder="Search..."
+                    aria-label="Search"
+                    aria-describedby="{{ $id }}-search-addon"
+                    data-table-id="{{ $id }}"
+                >
+            </div>
+        </div>
+        @endif
+        
+        @if($selectable)
+        <div class="data-table-bulk-actions d-none">
+            <div class="d-flex align-items-center">
+                <span class="me-1">
+                    <span class="selected-count">0</span> selected
+                </span>
+                <div class="dropdown">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" id="{{ $id }}-bulk-actions" data-bs-toggle="dropdown" aria-expanded="false">
+                        Actions
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="{{ $id }}-bulk-actions">
+                        <li><a class="dropdown-item bulk-delete" href="#" data-table-id="{{ $id }}">Delete Selected</a></li>
+                        <li><a class="dropdown-item bulk-export" href="#" data-table-id="{{ $id }}">Export Selected</a></li>
+                        {{ $bulkActions ?? '' }}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        @endif
+    </div>
+    @endif
+
+    {{-- Table Container with Responsive Wrapper --}}
+    <div class="position-relative">
+        {{-- Loading Overlay --}}
+        <div class="data-table-loading position-absolute w-100 h-100 d-none">
+            <div class="d-flex justify-content-center align-items-center h-100 bg-white bg-opacity-75">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">{{ $loadingMessage }}</span>
+                </div>
+                <span class="ms-2">{{ $loadingMessage }}</span>
+            </div>
+        </div>
+        
+        <div @class(['table-responsive', 'data-table-container' => true])>
+            <table 
+                id="{{ $id }}" 
+                @class(['table', 'data-table', 'table-hover' => $expandable || $inlineEditable])
+                role="grid"
+                aria-labelledby="{{ $id }}-title"
+            >
+                <thead>
+                    <tr>
+                        @if($selectable)
+                        <th class="text-center" style="width: 40px;">
+                            <div class="form-check">
+                                <input 
+                                    class="form-check-input select-all-checkbox" 
+                                    type="checkbox" 
+                                    id="{{ $id }}-select-all" 
+                                    data-table-id="{{ $id }}"
+                                    aria-label="Select all rows"
+                                >
+                            </div>
+                        </th>
+                        @endif
+                        
+                        @if($expandable)
+                        <th class="text-center" style="width: 40px;"></th>
+                        @endif
+                        
+                        @foreach($columns as $column)
+                        <th 
+                            @class(['column-header', 'sortable' => $sortable && ($column['sortable'] ?? true)])
+                            @if($sortable && ($column['sortable'] ?? true))
+                                data-sort="{{ $column['key'] }}"
+                                tabindex="0"
+                                role="button"
+                                aria-label="Sort by {{ $column['label'] }}"
+                            @endif
+                            @if($column['width'] ?? false)
+                                style="width: {{ $column['width'] }};"
+                            @endif
+                        >
+                            {{ $column['label'] }}
+                            @if($sortable && ($column['sortable'] ?? true))
+                            <span class="sort-icon ms-1">
+                                <i data-feather="chevron-up" class="sort-up d-none"></i>
+                                <i data-feather="chevron-down" class="sort-down d-none"></i>
+                            </span>
+                            @endif
+                        </th>
+                        @endforeach
+                        
+                        @if(!empty($actions))
+                        <th class="text-end" style="width: {{ count($actions) * 45 }}px;">Actions</th>
+                        @endif
+                    </tr>
+                </thead>
+                
+                <tbody>
+                    {{-- Rows will be rendered dynamically or passed as a slot --}}
+                    {{ $slot ?? '' }}
+                    
+                    {{-- Empty State --}}
+                    @if(empty($data) || (is_countable($data) && count($data) === 0))
+                    <tr class="empty-row">
+                        <td colspan="{{ count($columns) + ($selectable ? 1 : 0) + ($expandable ? 1 : 0) + (!empty($actions) ? 1 : 0) }}" class="text-center py-4">
+                            <div class="empty-state">
+                                <div class="empty-state-icon mb-2">
+                                    <i data-feather="database" class="text-secondary" style="width: 48px; height: 48px;"></i>
+                                </div>
+                                <p class="empty-state-message">{{ $emptyMessage }}</p>
+                                {{ $emptyStateActions ?? '' }}
+                            </div>
+                        </td>
+                    </tr>
+                    @endif
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    {{-- Pagination --}}
+    @if($pagination && (!empty($data) || isset($paginator)))
+    <div class="data-table-footer d-flex justify-content-between align-items-center mt-2">
+        <div class="showing-entries">
+            @if(isset($paginator))
+                Showing {{ $paginator->firstItem() ?? 0 }} to {{ $paginator->lastItem() ?? 0 }} of {{ $paginator->total() }} entries
+            @else
+                Showing {{ count($data) }} entries
+            @endif
+        </div>
+        
+        <div class="pagination-container">
+            @if(isset($paginator))
+                {{ $paginator->links() }}
+            @elseif(is_array($data) && count($data) > $perPage)
+                {{-- Simple pagination for array data --}}
+                <nav aria-label="Page navigation">
+                    <ul class="pagination pagination-sm">
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-label="Previous" tabindex="-1">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                        <li class="page-item">
+                            <a class="page-link" href="#" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            @endif
+        </div>
+    </div>
+    @endif
+</div>
+
+{{-- Row Template for Dynamic Rendering --}}
+<template id="{{ $id }}-row-template">
+    <tr data-id="{id}" class="data-row">
+        @if($selectable)
+        <td class="text-center">
+            <div class="form-check">
+                <input 
+                    class="form-check-input row-checkbox" 
+                    type="checkbox" 
+                    value="{id}"
+                    aria-label="Select row"
+                >
+            </div>
+        </td>
+        @endif
+        
+        @if($expandable)
+        <td class="text-center">
+            <button 
+                type="button" 
+                class="btn btn-icon btn-sm btn-text expand-row" 
+                data-id="{id}"
+                aria-expanded="false"
+                aria-label="Expand row"
+            >
+                <i data-feather="chevron-right"></i>
+            </button>
+        </td>
+        @endif
+        
+        @foreach($columns as $column)
+        <td 
+            @if($inlineEditable && ($column['editable'] ?? false))
+                class="editable-cell" 
+                data-column="{{ $column['key'] }}"
+                tabindex="0" 
+                role="button"
+                aria-label="Edit {{ $column['label'] }}"
+            @endif
+        >
+            {{{ $column['key'] }}}
+        </td>
+        @endforeach
+        
+        @if(!empty($actions))
+        <td class="text-end action-buttons">
+            @foreach($actions as $action)
+            @if($action === 'view')
+            <button 
+                type="button" 
+                class="btn btn-icon btn-sm btn-outline-primary me-1 view-action" 
+                data-id="{id}" 
+                aria-label="View"
+            >
+                <i data-feather="eye"></i>
+            </button>
+            @elseif($action === 'edit')
+            <button 
+                type="button" 
+                class="btn btn-icon btn-sm btn-outline-secondary me-1 edit-action" 
+                data-id="{id}" 
+                aria-label="Edit"
+            >
+                <i data-feather="edit"></i>
+            </button>
+            @elseif($action === 'delete')
+            <button 
+                type="button" 
+                class="btn btn-icon btn-sm btn-outline-danger delete-action" 
+                data-id="{id}" 
+                aria-label="Delete"
+            >
+                <i data-feather="trash-2"></i>
+            </button>
+            @else
+            <button 
+                type="button" 
+                class="btn btn-icon btn-sm btn-outline-secondary me-1 custom-action" 
+                data-id="{id}" 
+                data-action="{{ $action }}"
+                aria-label="{{ ucfirst($action) }}"
+            >
+                <i data-feather="more-horizontal"></i>
+            </button>
+            @endif
+            @endforeach
+        </td>
+        @endif
+    </tr>
+    @if($expandable)
+    <tr class="expansion-row d-none" data-parent-id="{id}">
+        <td colspan="{{ count($columns) + ($selectable ? 1 : 0) + ($expandable ? 1 : 0) + (!empty($actions) ? 1 : 0) }}" class="p-0">
+            <div class="expansion-content p-3">
+                <div class="loading-indicator text-center py-3 d-none">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <div class="expansion-data"></div>
+            </div>
+        </td>
+    </tr>
+    @endif
+</template>
+
+{{-- Inline Edit Form Template --}}
+@if($inlineEditable)
+<div class="modal fade" id="{{ $id }}-inline-edit-modal" tabindex="-1" aria-labelledby="{{ $id }}-inline-edit-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="{{ $id }}-inline-edit-modal-label">Edit Field</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="{{ $id }}-inline-edit-form">
+                    <div class="mb-3">
+                        <label for="{{ $id }}-field-value" class="form-label">Value</label>
+                        <input type="text" class="form-control" id="{{ $id }}-field-value">
+                        <input type="hidden" id="{{ $id }}-field-name">
+                        <input type="hidden" id="{{ $id }}-record-id">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary save-inline-edit" data-table-id="{{ $id }}">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tableId = '{{ $id }}';
+    const table = document.getElementById(tableId);
+    
+    if (!table) return;
+    
+    // Initialize Feather Icons
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+    
+    // Handle Select All Checkbox
+    const selectAllCheckbox = document.getElementById(`${tableId}-select-all`);
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            const checkboxes = table.querySelectorAll('.row-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+            
+            updateBulkActionsVisibility(tableId);
+        });
+        
+        // Listen for changes on row checkboxes
+        table.addEventListener('change', function(event) {
+            if (event.target.classList.contains('row-checkbox')) {
+                updateSelectAllCheckbox(tableId);
+                updateBulkActionsVisibility(tableId);
+            }
+        });
+    }
+    
+    // Handle Sorting
+    const sortableHeaders = table.querySelectorAll('th.sortable');
+    sortableHeaders.forEach(header => {
+        header.addEventListener('click', function() {
+            const column = this.dataset.sort;
+            const currentDirection = this.getAttribute('aria-sort') || 'none';
+            let newDirection;
+            
+            // Reset all sort indicators
+            sortableHeaders.forEach(h => {
+                h.setAttribute('aria-sort', 'none');
+                h.querySelector('.sort-up')?.classList.add('d-none');
+                h.querySelector('.sort-down')?.classList.add('d-none');
+            });
+            
+            // Set new sort direction
+            if (currentDirection === 'none' || currentDirection === 'descending') {
+                newDirection = 'ascending';
+                this.querySelector('.sort-up')?.classList.remove('d-none');
+            } else {
+                newDirection = 'descending';
+                this.querySelector('.sort-down')?.classList.remove('d-none');
+            }
+            
+            this.setAttribute('aria-sort', newDirection);
+            
+            // Trigger sorting (implement your sorting logic here)
+            triggerSort(tableId, column, newDirection);
+        });
+    });
+    
+    // Handle Row Expansion
+    const expandButtons = table.querySelectorAll('.expand-row');
+    expandButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const rowId = this.dataset.id;
+            const expanded = this.getAttribute('aria-expanded') === 'true';
+            const expansionRow = table.querySelector(`.expansion-row[data-parent-id="${rowId}"]`);
+            
+            if (expanded) {
+                // Collapse
+                this.setAttribute('aria-expanded', 'false');
+                expansionRow.classList.add('d-none');
+                this.querySelector('svg').setAttribute('data-feather', 'chevron-right');
+            } else {
+                // Expand
+                this.setAttribute('aria-expanded', 'true');
+                expansionRow.classList.remove('d-none');
+                this.querySelector('svg').setAttribute('data-feather', 'chevron-down');
+                
+                // Load content if needed
+                const loadingIndicator = expansionRow.querySelector('.loading-indicator');
+                const expansionData = expansionRow.querySelector('.expansion-data');
+                
+                if (expansionData.innerHTML.trim() === '') {
+                    loadingIndicator.classList.remove('d-none');
+                    
+                    // Fetch expanded data (implement your data loading logic here)
+                    loadExpandedData(tableId, rowId)
+                        .then(html => {
+                            expansionData.innerHTML = html;
+                            loadingIndicator.classList.add('d-none');
+                            
+                            // Re-initialize feather icons
+                            if (typeof feather !== 'undefined') {
+                                feather.replace();
+                            }
+                        })
+                        .catch(() => {
+                            expansionData.innerHTML = '<div class="alert alert-danger">Failed to load data</div>';
+                            loadingIndicator.classList.add('d-none');
+                        });
+                }
+            }
+            
+            // Re-initialize feather icons
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+        });
+    });
+    
+    // Handle Inline Editing
+    const editableCells = table.querySelectorAll('.editable-cell');
+    editableCells.forEach(cell => {
+        cell.addEventListener('click', function() {
+            const recordId = this.closest('tr').dataset.id;
+            const column = this.dataset.column;
+            const currentValue = this.textContent.trim();
+            
+            // Open inline edit modal
+            const modal = document.getElementById(`${tableId}-inline-edit-modal`);
+            if (modal) {
+                document.getElementById(`${tableId}-field-value`).value = currentValue;
+                document.getElementById(`${tableId}-field-name`).value = column;
+                document.getElementById(`${tableId}-record-id`).value = recordId;
+                
+                const bsModal = new bootstrap.Modal(modal);
+                bsModal.show();
+            }
+        });
+    });
+    
+    // Handle Save Inline Edit
+    const saveInlineEditButtons = document.querySelectorAll('.save-inline-edit');
+    saveInlineEditButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const targetTableId = this.dataset.tableId;
+            const fieldValue = document.getElementById(`${targetTableId}-field-value`).value;
+            const fieldName = document.getElementById(`${targetTableId}-field-name`).value;
+            const recordId = document.getElementById(`${targetTableId}-record-id`).value;
+            
+            // Save the edited value (implement your save logic here)
+            saveInlineEdit(targetTableId, recordId, fieldName, fieldValue)
+                .then(() => {
+                    // Update the cell content
+                    const cell = table.querySelector(`tr[data-id="${recordId}"] td[data-column="${fieldName}"]`);
+                    if (cell) {
+                        cell.textContent = fieldValue;
+                    }
+                    
+                    // Close the modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById(`${targetTableId}-inline-edit-modal`));
+                    modal.hide();
+                })
+                .catch(error => {
+                    alert('Failed to save changes: ' + error.message);
+                });
+        });
+    });
+    
+    // Handle Search
+    const searchInput = document.querySelector(`.search-input[data-table-id="${tableId}"]`);
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const searchValue = this.value;
+                
+                // Trigger search (implement your search logic here)
+                triggerSearch(tableId, searchValue);
+            }, 500);
+        });
+    }
+    
+    // Handle Bulk Actions
+    const bulkDeleteButton = document.querySelector(`.bulk-delete[data-table-id="${tableId}"]`);
+    if (bulkDeleteButton) {
+        bulkDeleteButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const selectedIds = getSelectedRowIds(tableId);
+            if (selectedIds.length === 0) return;
+            
+            if (confirm(`Are you sure you want to delete ${selectedIds.length} selected items?`)) {
+                // Perform bulk delete (implement your delete logic here)
+                performBulkDelete(tableId, selectedIds);
+            }
+        });
+    }
+    
+    // Helper Functions
+    function updateSelectAllCheckbox(tableId) {
+        const table = document.getElementById(tableId);
+        const selectAllCheckbox = document.getElementById(`${tableId}-select-all`);
+        const checkboxes = Array.from(table.querySelectorAll('.row-checkbox'));
+        
+        if (checkboxes.length === 0) {
+            selectAllCheckbox.checked = false;
+            return;
+        }
+        
+        const allChecked = checkboxes.every(checkbox => checkbox.checked);
+        const someChecked = checkboxes.some(checkbox => checkbox.checked);
+        
+        selectAllCheckbox.checked = allChecked;
+        selectAllCheckbox.indeterminate = someChecked && !allChecked;
+    }
+    
+    function updateBulkActionsVisibility(tableId) {
+        const selectedIds = getSelectedRowIds(tableId);
+        const bulkActionsDiv = document.querySelector(`.data-table-bulk-actions`);
+        const selectedCountSpan = document.querySelector(`.selected-count`);
+        
+        if (bulkActionsDiv) {
+            if (selectedIds.length > 0) {
+                bulkActionsDiv.classList.remove('d-none');
+                if (selectedCountSpan) {
+                    selectedCountSpan.textContent = selectedIds.length;
+                }
+            } else {
+                bulkActionsDiv.classList.add('d-none');
+            }
+        }
+    }
+    
+    function getSelectedRowIds(tableId) {
+        const table = document.getElementById(tableId);
+        const checkboxes = table.querySelectorAll('.row-checkbox:checked');
+        return Array.from(checkboxes).map(checkbox => checkbox.value);
+    }
+    
+    function triggerSort(tableId, column, direction) {
+        // Show loading state
+        showLoading(tableId, true);
+        
+        // Example: fetch sorted data via AJAX
+        // Replace with your actual implementation
+        console.log(`Sorting table ${tableId} by ${column} in ${direction} order`);
+        
+        // Hide loading when done
+        setTimeout(() => {
+            showLoading(tableId, false);
+        }, 500);
+    }
+    
+    function triggerSearch(tableId, searchValue) {
+        // Show loading state
+        showLoading(tableId, true);
+        
+        // Example: fetch search results via AJAX
+        // Replace with your actual implementation
+        console.log(`Searching in table ${tableId} for: ${searchValue}`);
+        
+        // Hide loading when done
+        setTimeout(() => {
+            showLoading(tableId, false);
+        }, 500);
+    }
+    
+    function loadExpandedData(tableId, rowId) {
+        // Example: fetch expanded row data via AJAX
+        // Replace with your actual implementation
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                resolve(`
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Details for item #${rowId}</h5>
+                            <p>This is expanded content for demonstration purposes.</p>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6>Additional Information</h6>
+                                    <p>More details would be loaded here from the server.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `);
+            }, 800);
+        });
+    }
+    
+    function saveInlineEdit(tableId, recordId, fieldName, fieldValue) {
+        // Example: save edited field via AJAX
+        // Replace with your actual implementation
+        return new Promise((resolve, reject) => {
+            console.log(`Saving edit for table ${tableId}, record ${recordId}, field ${fieldName}, value: ${fieldValue}`);
+            setTimeout(() => {
+                resolve();
+                // To simulate an error, use: reject(new Error('Server error'));
+            }, 500);
+        });
+    }
+    
+    function performBulkDelete(tableId, selectedIds) {
+        // Example: perform bulk delete via AJAX
+        // Replace with your actual implementation
+        console.log(`Deleting from table ${tableId}, IDs: ${selectedIds.join(', ')}`);
+        
+        // Show loading state
+        showLoading(tableId, true);
+        
+        // Hide loading when done
+        setTimeout(() => {
+            showLoading(tableId, false);
+            alert(`${selectedIds.length} items deleted successfully.`);
+            
+            // Reset checkboxes and bulk actions
+            document.getElementById(`${tableId}-select-all`).checked = false;
+            updateBulkActionsVisibility(tableId);
+        }, 1000);
+    }
+    
+    function showLoading(tableId, show) {
+        const loadingOverlay = document.querySelector(`#${tableId}`).closest('.position-relative').querySelector('.data-table-loading');
+        if (loadingOverlay) {
+            if (show) {
+                loadingOverlay.classList.remove('d-none');
+            } else {
+                loadingOverlay.classList.add('d-none');
+            }
+        }
+    }
+});
+</script>
+
+<style>
+/* Custom styles for data-table component */
+.data-table-component .sortable {
+    cursor: pointer;
+    position: relative;
+}
+
+.data-table-component .sortable:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+.data-table-component .editable-cell {
+    cursor: pointer;
+    position: relative;
+}
+
+.data-table-component .editable-cell:hover {
+    background-color: rgba(115, 103, 240, 0.1);
+}
+
+.data-table-component .editable-cell:hover::after {
+    content: "\f303"; /* Edit icon */
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: #7367f0;
+}
+
+.data-table-component .expansion-row {
+    background-color: #f8f8f8;
+    box-shadow: inset 0 3px 6px rgba(0,0,0,0.05);
+}
+
+.data-table-component .empty-state {
+    padding: 2rem 1rem;
+    text-align: center;
+}
+
+@media (max-width: 767.98px) {
+    .data-table-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .data-table-search, 
+    .data-table-bulk-actions {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .data-table-footer {
+        flex-direction: column;
+        align-items: center !important;
+    }
+    
+    .showing-entries {
+        margin-bottom: 0.5rem;
+    }
+}
+</style>

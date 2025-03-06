@@ -1,0 +1,489 @@
+@extends('layouts.app')
+
+@section('title', 'Create {{modelName}}')
+
+@section('content')
+<div class="content-wrapper">
+    <!-- Content Header -->
+    <div class="content-header row">
+        <div class="content-header-left col-md-9 col-12 mb-2">
+            <div class="row breadcrumbs-top">
+                <div class="col-12">
+                    <h2 class="content-header-title float-start mb-0">Create {{modelName}}</h2>
+                    <div class="breadcrumb-wrapper">
+                        {!! $breadcrumbs ?? '' !!}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /Content Header -->
+
+    <!-- Content Body -->
+    <div class="content-body">
+        <!-- Validation Errors -->
+        @if ($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <div class="alert-body">
+                <strong>Error!</strong> Please check the form for errors.
+                <ul>
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        @endif
+
+        <!-- Form Wizard -->
+        <div class="bs-stepper vertical wizard-modern wizard-modern-vertical">
+            <div class="bs-stepper-header">
+                <div class="step" data-target="#basic-information">
+                    <button type="button" class="step-trigger">
+                        <span class="bs-stepper-box">
+                            <i data-feather="user" class="font-medium-3"></i>
+                        </span>
+                        <span class="bs-stepper-label">
+                            <span class="bs-stepper-title">Basic Information</span>
+                            <span class="bs-stepper-subtitle">Enter basic details</span>
+                        </span>
+                    </button>
+                </div>
+                <div class="step" data-target="#additional-information">
+                    <button type="button" class="step-trigger">
+                        <span class="bs-stepper-box">
+                            <i data-feather="file-text" class="font-medium-3"></i>
+                        </span>
+                        <span class="bs-stepper-label">
+                            <span class="bs-stepper-title">Additional Information</span>
+                            <span class="bs-stepper-subtitle">Enter additional details</span>
+                        </span>
+                    </button>
+                </div>
+                <div class="step" data-target="#relationships">
+                    <button type="button" class="step-trigger">
+                        <span class="bs-stepper-box">
+                            <i data-feather="link" class="font-medium-3"></i>
+                        </span>
+                        <span class="bs-stepper-label">
+                            <span class="bs-stepper-title">Relationships</span>
+                            <span class="bs-stepper-subtitle">Connect related data</span>
+                        </span>
+                    </button>
+                </div>
+                <div class="step" data-target="#files-uploads">
+                    <button type="button" class="step-trigger">
+                        <span class="bs-stepper-box">
+                            <i data-feather="upload" class="font-medium-3"></i>
+                        </span>
+                        <span class="bs-stepper-label">
+                            <span class="bs-stepper-title">Files & Uploads</span>
+                            <span class="bs-stepper-subtitle">Upload related files</span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bs-stepper-content">
+                <form action="{{ route('{{routeName}}.store') }}" method="POST" enctype="multipart/form-data" id="create-form" class="needs-validation" novalidate>
+                    @csrf
+
+                    <!-- Basic Information -->
+                    <div id="basic-information" class="content">
+                        <div class="content-header">
+                            <h5 class="mb-0">Basic Information</h5>
+                            <small class="text-muted">Enter basic details for the {{modelName}}</small>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <!-- Basic Fields Placeholder - Will be replaced with actual fields -->
+                                        <div class="basic-fields">
+                                            {!! $fields ?? '' !!}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-2">
+                            <button type="button" class="btn btn-outline-secondary invisible">Previous</button>
+                            <button type="button" class="btn btn-primary next-step">Next</button>
+                        </div>
+                    </div>
+
+                    <!-- Additional Information -->
+                    <div id="additional-information" class="content">
+                        <div class="content-header">
+                            <h5 class="mb-0">Additional Information</h5>
+                            <small class="text-muted">Provide additional details for the {{modelName}}</small>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <!-- Tabs for Organized Sections -->
+                                        <ul class="nav nav-tabs" role="tablist">
+                                            <li class="nav-item">
+                                                <a class="nav-link active" id="details-tab" data-bs-toggle="tab" href="#details" aria-controls="details" role="tab" aria-selected="true">
+                                                    <i data-feather="info" class="me-25"></i>
+                                                    <span class="fw-bold">Details</span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a class="nav-link" id="settings-tab" data-bs-toggle="tab" href="#settings" aria-controls="settings" role="tab" aria-selected="false">
+                                                    <i data-feather="settings" class="me-25"></i>
+                                                    <span class="fw-bold">Settings</span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a class="nav-link" id="meta-tab" data-bs-toggle="tab" href="#meta" aria-controls="meta" role="tab" aria-selected="false">
+                                                    <i data-feather="tag" class="me-25"></i>
+                                                    <span class="fw-bold">Meta Data</span>
+                                                </a>
+                                            </li>
+                                        </ul>
+
+                                        <div class="tab-content">
+                                            <div class="tab-pane active" id="details" aria-labelledby="details-tab" role="tabpanel">
+                                                <!-- Detailed field section -->
+                                                <div class="row mt-2">
+                                                    <div class="col-12">
+                                                        <!-- Rich text editor field example -->
+                                                        <div class="mb-1">
+                                                            <label class="form-label" for="description">Description</label>
+                                                            <textarea class="form-control editor" id="description" name="description">{{ old('description') }}</textarea>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="tab-pane" id="settings" aria-labelledby="settings-tab" role="tabpanel">
+                                                <!-- Settings fields -->
+                                                <div class="row mt-2">
+                                                    <div class="col-12 col-md-6">
+                                                        <div class="mb-1">
+                                                            <label class="form-label" for="status">Status</label>
+                                                            <select class="form-select" id="status" name="status">
+                                                                <option value="active" {{ old('status') == 'active' ? 'selected' : '' }}>Active</option>
+                                                                <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                                                                <option value="pending" {{ old('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="col-12 col-md-6">
+                                                        <div class="mb-1">
+                                                            <label class="form-label" for="visibility">Visibility</label>
+                                                            <select class="form-select" id="visibility" name="visibility">
+                                                                <option value="public" {{ old('visibility') == 'public' ? 'selected' : '' }}>Public</option>
+                                                                <option value="private" {{ old('visibility') == 'private' ? 'selected' : '' }}>Private</option>
+                                                                <option value="draft" {{ old('visibility') == 'draft' ? 'selected' : '' }}>Draft</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="tab-pane" id="meta" aria-labelledby="meta-tab" role="tabpanel">
+                                                <!-- Meta field section -->
+                                                <div class="row mt-2">
+                                                    <div class="col-12 col-md-6">
+                                                        <div class="mb-1">
+                                                            <label class="form-label" for="meta_title">Meta Title</label>
+                                                            <input type="text" class="form-control" id="meta_title" name="meta_title" placeholder="Meta Title" value="{{ old('meta_title') }}">
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="col-12 col-md-6">
+                                                        <div class="mb-1">
+                                                            <label class="form-label" for="meta_keywords">Meta Keywords</label>
+                                                            <input type="text" class="form-control" id="meta_keywords" name="meta_keywords" placeholder="Keywords, separated, by, commas" value="{{ old('meta_keywords') }}">
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="col-12">
+                                                        <div class="mb-1">
+                                                            <label class="form-label" for="meta_description">Meta Description</label>
+                                                            <textarea class="form-control" id="meta_description" name="meta_description" rows="3" placeholder="Meta Description">{{ old('meta_description') }}</textarea>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-2">
+                            <button type="button" class="btn btn-outline-secondary prev-step">Previous</button>
+                            <button type="button" class="btn btn-primary next-step">Next</button>
+                        </div>
+                    </div>
+
+                    <!-- Relationships -->
+                    <div id="relationships" class="content">
+                        <div class="content-header">
+                            <h5 class="mb-0">Related Records</h5>
+                            <small class="text-muted">Link to related records</small>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <!-- Relationship fields -->
+                                        <div class="relationship-fields">
+                                            {!! $relationshipFields ?? '' !!}
+                                        </div>
+                                        
+                                        <!-- Conditional relationship fields (example) -->
+                                        <div id="conditional-fields" class="mt-2">
+                                            <div class="mb-1">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="enable-additional-relations" value="1">
+                                                    <label class="form-check-label" for="enable-additional-relations">Add additional relationships</label>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="additional-relations d-none mt-2">
+                                                <!-- Additional relationship fields will appear here when checkbox is checked -->
+                                                <div class="alert alert-info">
+                                                    <div class="alert-body">
+                                                        You can add more relationships here after saving.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-2">
+                            <button type="button" class="btn btn-outline-secondary prev-step">Previous</button>
+                            <button type="button" class="btn btn-primary next-step">Next</button>
+                        </div>
+                    </div>
+
+                    <!-- Files & Uploads -->
+                    <div id="files-uploads" class="content">
+                        <div class="content-header">
+                            <h5 class="mb-0">Files & Uploads</h5>
+                            <small class="text-muted">Upload related files</small>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <!-- Featured image upload -->
+                                        <div class="mb-1">
+                                            <label for="featured_image" class="form-label">Featured Image</label>
+                                            <div class="file-upload-wrapper">
+                                                <div class="file-upload-area">
+                                                    <input type="file" class="filepond" name="featured_image" id="featured_image" data-max-file-size="5MB" data-max-files="1" accept="image/*" />
+                                                    <p class="text-muted mt-50">Recommended dimensions: 1200x800 pixels. Max size: 5MB.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Gallery images upload -->
+                                        <div class="mb-1">
+                                            <label for="gallery" class="form-label">Gallery Images</label>
+                                            <div class="file-upload-wrapper">
+                                                <div class="file-upload-area">
+                                                    <input type="file" class="filepond" name="gallery[]" id="gallery" multiple data-max-file-size="10MB" data-max-files="5" accept="image/*" />
+                                                    <p class="text-muted mt-50">You can upload up to 5 images. Max size per image: 10MB.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Document upload -->
+                                        <div class="mb-1">
+                                            <label for="documents" class="form-label">Documents</label>
+                                            <div class="file-upload-wrapper">
+                                                <div class="file-upload-area">
+                                                    <input type="file" class="filepond" name="documents[]" id="documents" multiple data-max-file-size="20MB" data-max-files="3" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
+                                                    <p class="text-muted mt-50">Accepted formats: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT. Max size per file: 20MB.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-2">
+                            <button type="button" class="btn btn-outline-secondary prev-step">Previous</button>
+                            <div>
+                                <button type="button" class="btn btn-outline-secondary me-1" onclick="window.history.back()">Cancel</button>
+                                <button type="submit" class="btn btn-success">Save {{modelName}}</button>
+                                <button type="submit" name="save_and_continue" value="1" class="btn btn-primary">Save & Continue</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- /Content Body -->
+</div>
+@endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Stepper
+        const wizardVertical = document.querySelector('.vertical');
+        if (wizardVertical) {
+            const stepper = new Stepper(wizardVertical, {
+                linear: false,
+                animation: true
+            });
+            
+            // Handle next button clicks
+            const nextButtons = [].slice.call(document.querySelectorAll('.next-step'));
+            nextButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    stepper.next();
+                });
+            });
+            
+            // Handle previous button clicks
+            const prevButtons = [].slice.call(document.querySelectorAll('.prev-step'));
+            prevButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    stepper.previous();
+                });
+            });
+        }
+        
+        // Initialize Rich Text Editor for description field
+        if (typeof Quill !== 'undefined' && document.querySelector('.editor')) {
+            new Quill('.editor', {
+                modules: {
+                    toolbar: [
+                        [{ header: [1, 2, 3, 4, 5, 6, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ list: 'ordered' }, { list: 'bullet' }],
+                        [{ color: [] }, { background: [] }],
+                        ['link', 'image'],
+                        ['clean']
+                    ]
+                },
+                theme: 'snow'
+            });
+        }
+        
+        // Initialize FilePond for file uploads
+        if (typeof FilePond !== 'undefined') {
+            // For single image upload
+            FilePond.create(document.querySelector('input[name="featured_image"]'));
+            
+            // For multiple images upload
+            FilePond.create(document.querySelector('input[name="gallery[]"]'), {
+                allowMultiple: true
+            });
+            
+            // For documents upload
+            FilePond.create(document.querySelector('input[name="documents[]"]'), {
+                allowMultiple: true
+            });
+        }
+        
+        // Initialize Flatpickr for date/time fields
+        if (typeof flatpickr !== 'undefined') {
+            flatpickr('.flatpickr-date', {
+                dateFormat: 'Y-m-d'
+            });
+            
+            flatpickr('.flatpickr-time', {
+                enableTime: true,
+                noCalendar: true,
+                dateFormat: 'H:i'
+            });
+            
+            flatpickr('.flatpickr-date-time', {
+                enableTime: true,
+                dateFormat: 'Y-m-d H:i'
+            });
+        }
+        
+        // Show/hide conditional fields
+        const enableAdditionalRelations = document.getElementById('enable-additional-relations');
+        if (enableAdditionalRelations) {
+            const additionalRelations = document.querySelector('.additional-relations');
+            enableAdditionalRelations.addEventListener('change', function() {
+                if (this.checked) {
+                    additionalRelations.classList.remove('d-none');
+                } else {
+                    additionalRelations.classList.add('d-none');
+                }
+            });
+        }
+        
+        // Client-side validation
+        const form = document.getElementById('create-form');
+        if (form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            });
+        }
+        
+        // Initialize Feather Icons
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+    });
+</script>
+@endpush
+
+@push('styles')
+<style>
+    /* Wizard steps customization */
+    .wizard-modern-vertical .bs-stepper-header {
+        border-right: 1px solid #ebe9f1;
+    }
+    
+    /* File upload area styles */
+    .file-upload-area {
+        border: 2px dashed #ebe9f1;
+        border-radius: 0.428rem;
+        padding: 1rem;
+        background-color: #f8f8f8;
+    }
+    
+    /* Form validation styles */
+    .was-validated .form-control:invalid {
+        border-color: #ea5455;
+        padding-right: calc(1.45em + 0.876rem);
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23ea5455' viewBox='0 0 12 12'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23ea5455' stroke='none'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right calc(0.3625em + 0.219rem) center;
+        background-size: calc(0.725em + 0.438rem) calc(0.725em + 0.438rem);
+    }
+    
+    /* Responsive styling for wizard */
+    @media (max-width: 767.98px) {
+        .wizard-modern-vertical {
+            flex-direction: column !important;
+        }
+        
+        .wizard-modern-vertical .bs-stepper-header {
+            border-right: none;
+            border-bottom: 1px solid #ebe9f1;
+            margin-bottom: 1.5rem;
+        }
+    }
+</style>
+@endpush

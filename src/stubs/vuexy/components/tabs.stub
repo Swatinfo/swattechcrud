@@ -1,0 +1,1027 @@
+{{-- 
+Component Class: SwatTech\Crud\View\Components\Tabs
+
+Properties:
+    - id: string - Unique identifier for the tabs component (default: auto-generated)
+    - type: string - Tab style type: tabs, pills, or wizard (default: tabs)
+    - vertical: boolean - Whether tabs should be displayed vertically (default: false)
+    - activeTab: string - The ID of the tab that should be active by default (default: first tab)
+    - justified: boolean - Whether tabs should have equal width (default: false)
+    - fill: boolean - Whether tabs should fill available width (default: false)
+    - alignment: string - Alignment of horizontal tabs: start, center, end (default: start)
+    - bordered: boolean - Whether to show borders around tabs (default: false)
+    - contentClass: string - Additional classes for the tab content container
+    - navClass: string - Additional classes for the tab navigation
+    - persist: boolean - Whether to persist active tab state in localStorage (default: false)
+    - lazy: boolean - Whether to use lazy loading for tab content (default: false)
+    - fade: boolean - Whether to use fade animation for tab transitions (default: true)
+    - overflow: string - How to handle tab overflow: wrap, scroll, dropdown (default: wrap)
+    - keyboardNavigation: boolean - Enable keyboard navigation with arrow keys (default: true)
+    - tabItems: array - Array of tab items
+    - responsive: boolean - Whether to adapt layout on small screens (default: true)
+    - progressBar: boolean - Show progress bar for wizard (default: false for tabs/pills, true for wizard)
+--}}
+
+@props([
+    'id' => 'tabs-'.uniqid(),
+    'type' => 'tabs',
+    'vertical' => false,
+    'activeTab' => null,
+    'justified' => false,
+    'fill' => false,
+    'alignment' => 'start',
+    'bordered' => false,
+    'contentClass' => '',
+    'navClass' => '',
+    'persist' => false,
+    'lazy' => false,
+    'fade' => true,
+    'overflow' => 'wrap',
+    'keyboardNavigation' => true,
+    'tabItems' => [],
+    'responsive' => true,
+    'progressBar' => null,
+])
+
+@php
+    // Determine tab style classes
+    $tabClasses = ['nav'];
+    
+    // Determine if it's a wizard and set appropriate classes
+    $isWizard = $type === 'wizard';
+    
+    if ($isWizard) {
+        $tabClasses[] = 'nav-timeline';
+    } else {
+        $tabClasses[] = 'nav-' . $type;
+    }
+    
+    // Determine layout direction
+    if ($vertical) {
+        $tabClasses[] = 'flex-column';
+        if ($isWizard) {
+            $tabClasses[] = 'wizard-vertical';
+        }
+    } else {
+        if ($alignment !== 'start') {
+            $tabClasses[] = 'justify-content-' . $alignment;
+        }
+    }
+    
+    // Add other style classes
+    if ($justified) {
+        $tabClasses[] = 'nav-justified';
+    }
+    
+    if ($fill) {
+        $tabClasses[] = 'nav-fill';
+    }
+    
+    if ($bordered) {
+        $tabClasses[] = 'nav-bordered';
+    }
+    
+    // Handle overflow
+    if ($overflow === 'scroll') {
+        $tabClasses[] = 'nav-scrollable';
+    } elseif ($overflow === 'dropdown') {
+        $tabClasses[] = 'nav-with-dropdown';
+    }
+    
+    // Add custom nav classes
+    if ($navClass) {
+        $tabClasses[] = $navClass;
+    }
+    
+    // Format classes string
+    $navClassString = implode(' ', $tabClasses);
+    
+    // Determine active tab if not set
+    if (empty($activeTab) && !empty($tabItems)) {
+        $firstTab = reset($tabItems);
+        $activeTab = $firstTab['id'] ?? '';
+    }
+    
+    // Determine if we need progress bar
+    if ($progressBar === null) {
+        $progressBar = $isWizard;
+    }
+@endphp
+
+<div id="{{ $id }}" class="tabs-component {{ $vertical ? 'tabs-vertical d-flex align-items-start' : '' }}"
+    @if($persist) data-persist="true" @endif
+    @if($lazy) data-lazy="true" @endif
+    @if($keyboardNavigation) data-keyboard="true" @endif
+    @if($responsive) data-responsive="true" @endif
+>
+    <div class="nav-container {{ $vertical ? 'me-2' : 'mb-2' }} {{ $overflow === 'scroll' ? 'position-relative' : '' }}">
+        @if($overflow === 'scroll')
+            <button type="button" class="btn btn-icon scroll-prev d-none">
+                <i class="fas fa-chevron-left" aria-hidden="true"></i>
+                <span class="visually-hidden">Scroll left</span>
+            </button>
+        @endif
+        
+        <ul class="{{ $navClassString }}" role="tablist" aria-orientation="{{ $vertical ? 'vertical' : 'horizontal' }}">
+            @forelse($tabItems as $index => $tab)
+                @php
+                    $isActive = $tab['id'] === $activeTab;
+                    $tabId = $tab['id'] ?? ($id . '-tab-' . $index);
+                    $contentId = $tab['contentId'] ?? ($id . '-content-' . $index);
+                    $disabled = $tab['disabled'] ?? false;
+                @endphp
+                
+                <li class="nav-item" role="presentation">
+                    <button 
+                        class="nav-link {{ $isActive ? 'active' : '' }} {{ $disabled ? 'disabled' : '' }}"
+                        id="{{ $tabId }}"
+                        data-bs-toggle="tab"
+                        data-bs-target="#{{ $contentId }}"
+                        type="button"
+                        role="tab"
+                        aria-controls="{{ $contentId }}"
+                        aria-selected="{{ $isActive ? 'true' : 'false' }}"
+                        @if($disabled) disabled @endif
+                    >
+                        @if(!empty($tab['icon']))
+                            <i class="{{ $tab['icon'] }} me-1" aria-hidden="true"></i>
+                        @endif
+                        
+                        {{ $tab['label'] }}
+                        
+                        @if(!empty($tab['badge']))
+                            <span class="badge rounded-pill bg-{{ $tab['badge']['variant'] ?? 'primary' }} ms-1">{{ $tab['badge']['text'] }}</span>
+                        @endif
+                    </button>
+                </li>
+            @empty
+                {{-- Default structure if no tab items provided --}}
+                @php
+                    // Count the tab slots in $slots
+                    $tabSlots = [];
+                    foreach ($attributes->getAttributes() as $key => $value) {
+                        if (strpos($key, 'tab-') === 0) {
+                            $tabSlots[] = $key;
+                        }
+                    }
+                @endphp
+                
+                @foreach($tabSlots as $index => $tabSlot)
+                    @php
+                        $slotName = str_replace('tab-', '', $tabSlot);
+                        $tabId = $id . '-tab-' . $slotName;
+                        $contentId = $id . '-content-' . $slotName;
+                        $isActive = $index === 0;
+                        if (isset(${$tabSlot . '-disabled'})) {
+                            $disabled = ${$tabSlot . '-disabled'};
+                        } else {
+                            $disabled = false;
+                        }
+                    @endphp
+                    
+                    <li class="nav-item" role="presentation">
+                        <button 
+                            class="nav-link {{ $isActive ? 'active' : '' }} {{ $disabled ? 'disabled' : '' }}"
+                            id="{{ $tabId }}"
+                            data-bs-toggle="tab"
+                            data-bs-target="#{{ $contentId }}"
+                            type="button"
+                            role="tab"
+                            aria-controls="{{ $contentId }}"
+                            aria-selected="{{ $isActive ? 'true' : 'false' }}"
+                            @if($disabled) disabled @endif
+                        >
+                            @if(isset(${$tabSlot . '-icon'}))
+                                <i class="{{ ${$tabSlot . '-icon'} }} me-1" aria-hidden="true"></i>
+                            @endif
+                            
+                            {{ ${$tabSlot . '-label'} ?? $slotName }}
+                            
+                            @if(isset(${$tabSlot . '-badge'}))
+                                <span class="badge rounded-pill bg-{{ ${$tabSlot . '-badge-variant'} ?? 'primary' }} ms-1">{{ ${$tabSlot . '-badge'} }}</span>
+                            @endif
+                        </button>
+                    </li>
+                @endforeach
+            @endforelse
+
+            @if($overflow === 'dropdown')
+                <li class="nav-item dropdown more-tabs-dropdown d-none">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="more-tabs-text">More</span>
+                        <span class="more-tabs-count badge rounded-pill bg-primary ms-1">0</span>
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="more-tabs-dropdown">
+                        {{-- Overflow tabs will be moved here dynamically --}}
+                    </ul>
+                </li>
+            @endif
+        </ul>
+        
+        @if($overflow === 'scroll')
+            <button type="button" class="btn btn-icon scroll-next d-none">
+                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                <span class="visually-hidden">Scroll right</span>
+            </button>
+        @endif
+    </div>
+    
+    @if($progressBar && $isWizard)
+        <div class="progress wizard-progress mt-1 mb-3">
+            <div class="progress-bar" role="progressbar" style="width: 0%" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+    @endif
+    
+    <div class="tab-content w-100 {{ $fade ? 'fade-enabled' : '' }} {{ $contentClass }}">
+        @forelse($tabItems as $index => $tab)
+            @php
+                $isActive = $tab['id'] === $activeTab;
+                $contentId = $tab['contentId'] ?? ($id . '-content-' . $index);
+            @endphp
+            
+            <div 
+                class="tab-pane {{ $fade ? 'fade' : '' }} {{ $isActive ? ($fade ? 'show active' : 'active') : '' }}" 
+                id="{{ $contentId }}" 
+                role="tabpanel" 
+                aria-labelledby="{{ $tab['id'] ?? ($id . '-tab-' . $index) }}"
+                @if($lazy && !$isActive) data-lazy="true" @endif
+            >
+                @if(!empty($tab['content']))
+                    {!! $tab['content'] !!}
+                @endif
+                
+                @if(isset($tab['slot']))
+                    {{ $tab['slot'] }}
+                @endif
+            </div>
+        @empty
+            {{-- Use slots if no tab items provided --}}
+            @php
+                $contentSlots = [];
+                foreach ($attributes->getAttributes() as $key => $value) {
+                    if (strpos($key, 'content-') === 0) {
+                        $contentSlots[] = $key;
+                    }
+                }
+            @endphp
+            
+            @foreach($contentSlots as $index => $contentSlot)
+                @php
+                    $slotName = str_replace('content-', '', $contentSlot);
+                    $contentId = $id . '-content-' . $slotName;
+                    $isActive = $index === 0;
+                @endphp
+                
+                <div 
+                    class="tab-pane {{ $fade ? 'fade' : '' }} {{ $isActive ? ($fade ? 'show active' : 'active') : '' }}" 
+                    id="{{ $contentId }}" 
+                    role="tabpanel" 
+                    aria-labelledby="{{ $id . '-tab-' . $slotName }}"
+                    @if($lazy && !$isActive) data-lazy="true" @endif
+                >
+                    {{ ${$contentSlot} }}
+                </div>
+            @endforeach
+            
+            {{-- Default slot goes to first tab by default --}}
+            @if(!empty($slot->toHtml()) && empty($contentSlots))
+                <div 
+                    class="tab-pane {{ $fade ? 'fade' : '' }} {{ $fade ? 'show active' : 'active' }}" 
+                    id="{{ $id }}-content-default" 
+                    role="tabpanel" 
+                    aria-labelledby="{{ $id }}-tab-default"
+                >
+                    {{ $slot }}
+                </div>
+            @endif
+        @endforelse
+    </div>
+</div>
+
+@once
+    @push('scripts')
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize all tabs components
+        document.querySelectorAll('.tabs-component').forEach(function(tabsComponent) {
+            initializeTabs(tabsComponent);
+        });
+        
+        function initializeTabs(tabsComponent) {
+            // Get component ID
+            const id = tabsComponent.id;
+            
+            // Handle tab persistence
+            const shouldPersist = tabsComponent.dataset.persist === 'true';
+            if (shouldPersist) {
+                setupTabPersistence(tabsComponent);
+            }
+            
+            // Handle lazy loading
+            const isLazy = tabsComponent.dataset.lazy === 'true';
+            if (isLazy) {
+                setupLazyLoading(tabsComponent);
+            }
+            
+            // Handle keyboard navigation
+            const enableKeyboard = tabsComponent.dataset.keyboard === 'true';
+            if (enableKeyboard) {
+                setupKeyboardNavigation(tabsComponent);
+            }
+            
+            // Handle responsive behavior
+            const isResponsive = tabsComponent.dataset.responsive === 'true';
+            if (isResponsive) {
+                setupResponsiveBehavior(tabsComponent);
+                window.addEventListener('resize', function() {
+                    setupResponsiveBehavior(tabsComponent);
+                });
+            }
+            
+            // Handle overflow if necessary
+            if (tabsComponent.querySelector('.nav-scrollable')) {
+                setupScrollableNav(tabsComponent);
+            } else if (tabsComponent.querySelector('.nav-with-dropdown')) {
+                setupDropdownNav(tabsComponent);
+            }
+            
+            // For wizard type tabs, setup progress tracking
+            const progressBar = tabsComponent.querySelector('.wizard-progress .progress-bar');
+            if (progressBar) {
+                setupWizardProgress(tabsComponent, progressBar);
+            }
+        }
+        
+        function setupTabPersistence(tabsComponent) {
+            const tabs = tabsComponent.querySelectorAll('[data-bs-toggle="tab"]');
+            const storageKey = 'active-tab-' + tabsComponent.id;
+            
+            // Set initial active tab from storage if exists
+            const storedTabId = localStorage.getItem(storageKey);
+            if (storedTabId) {
+                const storedTab = document.getElementById(storedTabId);
+                if (storedTab && !storedTab.classList.contains('active') && !storedTab.disabled) {
+                    const bsTab = new bootstrap.Tab(storedTab);
+                    bsTab.show();
+                }
+            }
+            
+            // Update storage when tab changes
+            tabs.forEach(tab => {
+                tab.addEventListener('shown.bs.tab', function() {
+                    localStorage.setItem(storageKey, this.id);
+                });
+            });
+        }
+        
+        function setupLazyLoading(tabsComponent) {
+            const lazyPanes = tabsComponent.querySelectorAll('.tab-pane[data-lazy="true"]');
+            const tabs = tabsComponent.querySelectorAll('[data-bs-toggle="tab"]');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('shown.bs.tab', function() {
+                    const target = document.querySelector(this.dataset.bsTarget);
+                    if (target && target.dataset.lazy === 'true') {
+                        // Remove lazy attribute to prevent reloading
+                        target.removeAttribute('data-lazy');
+                        
+                        // Here you'd typically load content via AJAX
+                        // We'll simulate content loading with a loading indicator
+                        if (target.querySelector('.lazy-placeholder')) {
+                            const placeholder = target.querySelector('.lazy-placeholder');
+                            placeholder.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2">Loading content...</p></div>';
+                            
+                            // Simulate AJAX delay
+                            setTimeout(() => {
+                                // Trigger a custom event that can be listened for to load actual content
+                                const event = new CustomEvent('lazyload', {
+                                    detail: { 
+                                        tabId: this.id,
+                                        contentId: target.id
+                                    }
+                                });
+                                target.dispatchEvent(event);
+                                
+                                // For demo purposes, replace with success message
+                                placeholder.innerHTML = '<div class="alert alert-success">Content loaded successfully!</div>';
+                            }, 1000);
+                        }
+                    }
+                });
+            });
+            
+            // Add lazy placeholders to lazy panes
+            lazyPanes.forEach(pane => {
+                if (!pane.querySelector('.lazy-placeholder')) {
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'lazy-placeholder';
+                    pane.appendChild(placeholder);
+                }
+            });
+        }
+        
+        function setupKeyboardNavigation(tabsComponent) {
+            const tabs = Array.from(tabsComponent.querySelectorAll('[data-bs-toggle="tab"]'));
+            const isVertical = tabsComponent.classList.contains('tabs-vertical');
+            
+            tabsComponent.addEventListener('keydown', function(e) {
+                // Only if focus is on a tab
+                const activeElement = document.activeElement;
+                if (!tabs.includes(activeElement)) return;
+                
+                const currentIndex = tabs.indexOf(activeElement);
+                let nextIndex;
+                
+                // Determine which key was pressed and calculate the next tab index
+                switch (e.key) {
+                    case 'ArrowRight':
+                        if (!isVertical) {
+                            nextIndex = (currentIndex + 1) % tabs.length;
+                            e.preventDefault();
+                        }
+                        break;
+                    case 'ArrowLeft':
+                        if (!isVertical) {
+                            nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+                            e.preventDefault();
+                        }
+                        break;
+                    case 'ArrowDown':
+                        if (isVertical) {
+                            nextIndex = (currentIndex + 1) % tabs.length;
+                            e.preventDefault();
+                        }
+                        break;
+                    case 'ArrowUp':
+                        if (isVertical) {
+                            nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+                            e.preventDefault();
+                        }
+                        break;
+                    case 'Home':
+                        nextIndex = 0;
+                        e.preventDefault();
+                        break;
+                    case 'End':
+                        nextIndex = tabs.length - 1;
+                        e.preventDefault();
+                        break;
+                    default:
+                        return;
+                }
+                
+                // Skip disabled tabs
+                if (tabs[nextIndex].disabled) {
+                    // Find the next non-disabled tab
+                    let count = 0;
+                    let direction = nextIndex > currentIndex ? 1 : -1;
+                    while (tabs[nextIndex].disabled && count < tabs.length) {
+                        nextIndex = (nextIndex + direction + tabs.length) % tabs.length;
+                        count++;
+                    }
+                    
+                    // If all tabs are disabled, don't move
+                    if (tabs[nextIndex].disabled) return;
+                }
+                
+                // Focus the next tab
+                tabs[nextIndex].focus();
+                
+                // Optionally activate the tab on arrow navigation
+                // Uncomment the below lines to enable this behavior
+                // const bsTab = new bootstrap.Tab(tabs[nextIndex]);
+                // bsTab.show();
+            });
+        }
+        
+        function setupResponsiveBehavior(tabsComponent) {
+            const isVertical = tabsComponent.classList.contains('tabs-vertical');
+            const navContainer = tabsComponent.querySelector('.nav-container');
+            const tabNav = tabsComponent.querySelector('.nav');
+            const tabContent = tabsComponent.querySelector('.tab-content');
+            
+            // Only adjust vertical tabs on smaller screens
+            if (isVertical && window.innerWidth < 768) {
+                tabsComponent.classList.remove('d-flex', 'align-items-start');
+                navContainer.classList.remove('me-2');
+                navContainer.classList.add('mb-2');
+                tabNav.classList.remove('flex-column');
+            } else if (isVertical) {
+                tabsComponent.classList.add('d-flex', 'align-items-start');
+                navContainer.classList.add('me-2');
+                navContainer.classList.remove('mb-2');
+                tabNav.classList.add('flex-column');
+            }
+        }
+        
+        function setupScrollableNav(tabsComponent) {
+            const navContainer = tabsComponent.querySelector('.nav-container');
+            const tabNav = tabsComponent.querySelector('.nav-scrollable');
+            const prevBtn = tabsComponent.querySelector('.scroll-prev');
+            const nextBtn = tabsComponent.querySelector('.scroll-next');
+            
+            if (!tabNav || !prevBtn || !nextBtn) return;
+            
+            // Show/hide scroll buttons based on overflow state
+            function updateScrollButtonsVisibility() {
+                const hasOverflow = tabNav.scrollWidth > tabNav.clientWidth;
+                const atStart = tabNav.scrollLeft <= 0;
+                const atEnd = tabNav.scrollLeft >= tabNav.scrollWidth - tabNav.clientWidth;
+                
+                prevBtn.classList.toggle('d-none', !hasOverflow || atStart);
+                nextBtn.classList.toggle('d-none', !hasOverflow || atEnd);
+            }
+            
+            // Handle scrolling
+            prevBtn.addEventListener('click', function() {
+                tabNav.scrollBy({ left: -100, behavior: 'smooth' });
+            });
+            
+            nextBtn.addEventListener('click', function() {
+                tabNav.scrollBy({ left: 100, behavior: 'smooth' });
+            });
+            
+            // Update visibility on scroll
+            tabNav.addEventListener('scroll', updateScrollButtonsVisibility);
+            
+            // Initial setup and on resize
+            updateScrollButtonsVisibility();
+            window.addEventListener('resize', updateScrollButtonsVisibility);
+        }
+        
+        function setupDropdownNav(tabsComponent) {
+            const tabNav = tabsComponent.querySelector('.nav-with-dropdown');
+            const dropdownItem = tabsComponent.querySelector('.more-tabs-dropdown');
+            const dropdownMenu = dropdownItem.querySelector('.dropdown-menu');
+            const dropdownCount = dropdownItem.querySelector('.more-tabs-count');
+            const tabs = Array.from(tabNav.querySelectorAll('.nav-item:not(.more-tabs-dropdown)'));
+            
+            function updateDropdown() {
+                // Reset
+                tabs.forEach(tab => tab.style.display = '');
+                dropdownMenu.innerHTML = '';
+                dropdownItem.classList.add('d-none');
+                
+                // Check available width
+                const containerWidth = tabNav.clientWidth;
+                const dropdownWidth = dropdownItem.offsetWidth;
+                let availableWidth = containerWidth - dropdownWidth;
+                let hiddenTabs = 0;
+                
+                // Determine which tabs need to be hidden
+                tabs.forEach(tab => {
+                    if (availableWidth - tab.offsetWidth < 0) {
+                        // Move to dropdown
+                        tab.style.display = 'none';
+                        hiddenTabs++;
+                        
+                        // Clone the button to the dropdown menu
+                        const tabButton = tab.querySelector('.nav-link');
+                        const menuItem = document.createElement('li');
+                        const menuLink = document.createElement('a');
+                        menuLink.className = 'dropdown-item';
+                        menuLink.innerHTML = tabButton.innerHTML;
+                        menuLink.href = '#';
+                        menuLink.setAttribute('data-bs-toggle', 'tab');
+                        menuLink.setAttribute('data-bs-target', tabButton.getAttribute('data-bs-target'));
+                        menuLink.setAttribute('role', 'tab');
+                        menuLink.setAttribute('aria-controls', tabButton.getAttribute('aria-controls'));
+                        menuLink.setAttribute('aria-selected', 'false');
+                        
+                        // Add click handler to activate the original tab
+                        menuLink.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            tabButton.click();
+                        });
+                        
+                        menuItem.appendChild(menuLink);
+                        dropdownMenu.appendChild(menuItem);
+                    } else {
+                        availableWidth -= tab.offsetWidth;
+                    }
+                });
+                
+                // Show dropdown if needed
+                if (hiddenTabs > 0) {
+                    dropdownItem.classList.remove('d-none');
+                    dropdownCount.textContent = hiddenTabs;
+                }
+            }
+            
+            // Run on load and resize
+            if (dropdownItem && tabs.length > 0) {
+                updateDropdown();
+                window.addEventListener('resize', updateDropdown);
+            }
+        }
+        
+        function setupWizardProgress(tabsComponent, progressBar) {
+            const tabs = Array.from(tabsComponent.querySelectorAll('[data-bs-toggle="tab"]'));
+            const totalSteps = tabs.length;
+            
+            // Update progress when tab changes
+            tabs.forEach(tab => {
+                tab.addEventListener('shown.bs.tab', function() {
+                    const activeIndex = tabs.indexOf(this);
+                    const progressPercentage = ((activeIndex + 1) / totalSteps) * 100;
+                    progressBar.style.width = `${progressPercentage}%`;
+                    progressBar.setAttribute('aria-valuenow', progressPercentage);
+                });
+            });
+            
+            // Initialize progress bar with first tab
+            const activeTab = tabsComponent.querySelector('[data-bs-toggle="tab"].active');
+            if (activeTab) {
+                const activeIndex = tabs.indexOf(activeTab);
+                const progressPercentage = ((activeIndex + 1) / totalSteps) * 100;
+                progressBar.style.width = `${progressPercentage}%`;
+                progressBar.setAttribute('aria-valuenow', progressPercentage);
+            }
+            
+            // Add previous/next navigation for wizard
+            const isWizard = tabsComponent.querySelector('.nav-timeline');
+            if (isWizard) {
+                // Create wizard navigation buttons
+                const wizardNavigation = document.createElement('div');
+                wizardNavigation.className = 'wizard-navigation d-flex justify-content-between mt-3';
+                
+                const prevButton = document.createElement('button');
+                prevButton.type = 'button';
+                prevButton.className = 'btn btn-outline-primary wizard-prev';
+                prevButton.innerHTML = '<i class="fas fa-chevron-left me-1"></i> Previous';
+                prevButton.disabled = true; // Disabled initially on first step
+                
+                const nextButton = document.createElement('button');
+                nextButton.type = 'button';
+                nextButton.className = 'btn btn-primary wizard-next';
+                nextButton.innerHTML = 'Next <i class="fas fa-chevron-right ms-1"></i>';
+                
+                wizardNavigation.appendChild(prevButton);
+                wizardNavigation.appendChild(nextButton);
+                
+                // Add to component after tab content
+                tabsComponent.appendChild(wizardNavigation);
+                
+                // Navigation button handlers
+                prevButton.addEventListener('click', function() {
+                    const activeTab = tabsComponent.querySelector('[data-bs-toggle="tab"].active');
+                    const activeIndex = tabs.indexOf(activeTab);
+                    
+                    if (activeIndex > 0) {
+                        const prevTab = tabs[activeIndex - 1];
+                        const bsTab = new bootstrap.Tab(prevTab);
+                        bsTab.show();
+                    }
+                });
+                
+                nextButton.addEventListener('click', function() {
+                    const activeTab = tabsComponent.querySelector('[data-bs-toggle="tab"].active');
+                    const activeIndex = tabs.indexOf(activeTab);
+                    
+                    if (activeIndex < tabs.length - 1) {
+                        const nextTab = tabs[activeIndex + 1];
+                        const bsTab = new bootstrap.Tab(nextTab);
+                        bsTab.show();
+                    }
+                });
+                
+                // Update button states when tab changes
+                tabs.forEach(tab => {
+                    tab.addEventListener('shown.bs.tab', function() {
+                        const activeIndex = tabs.indexOf(this);
+                        prevButton.disabled = activeIndex === 0;
+                        nextButton.disabled = activeIndex === tabs.length - 1;
+                        
+                        // Change next button on last step
+                        if (activeIndex === tabs.length - 1) {
+                            nextButton.innerHTML = 'Finish <i class="fas fa-check ms-1"></i>';
+                            nextButton.classList.remove('btn-primary');
+                            nextButton.classList.add('btn-success');
+                        } else {
+                            nextButton.innerHTML = 'Next <i class="fas fa-chevron-right ms-1"></i>';
+                            nextButton.classList.add('btn-primary');
+                            nextButton.classList.remove('btn-success');
+                        }
+                    });
+                });
+            }
+        }
+    });
+    </script>
+    @endpush
+    
+    @push('styles')
+    <style>
+    /* Basic tab styles */
+    .tabs-component .nav-tabs {
+        border-bottom: 1px solid #ebe9f1;
+    }
+    
+    .tabs-component .nav-tabs .nav-link {
+        color: #6e6b7b;
+        font-weight: 500;
+        border: 0;
+        border-radius: 0;
+        padding: 0.75rem 1.25rem;
+        transition: all 0.15s ease;
+        position: relative;
+    }
+    
+    .tabs-component .nav-tabs .nav-link:hover {
+        color: #7367f0;
+    }
+    
+    .tabs-component .nav-tabs .nav-link.active {
+        color: #7367f0;
+    }
+    
+    .tabs-component .nav-tabs .nav-link.active:after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background-color: #7367f0;
+    }
+    
+        /* Pills style */
+    .tabs-component .nav-pills .nav-link {
+        color: #6e6b7b;
+        background: rgba(115, 103, 240, 0.05);
+        border-radius: 0.25rem;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+        padding: 0.5rem 1rem;
+        transition: all 0.15s ease;
+    }
+    
+    .tabs-component .nav-pills .nav-link:hover {
+        background: rgba(115, 103, 240, 0.1);
+    }
+    
+    .tabs-component .nav-pills .nav-link.active {
+        color: #fff;
+        background-color: #7367f0;
+    }
+    
+    /* Wizard style */
+    .tabs-component .nav-timeline {
+        position: relative;
+        margin-bottom: 2rem;
+    }
+    
+    .tabs-component .nav-timeline:before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background-color: #ebe9f1;
+        transform: translateY(-50%);
+        z-index: 0;
+    }
+    
+    .tabs-component .nav-timeline .nav-item {
+        position: relative;
+        z-index: 1;
+        flex: 1;
+        text-align: center;
+    }
+    
+    .tabs-component .nav-timeline .nav-link {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: transparent;
+        border: 0;
+        padding: 1rem 0.5rem;
+    }
+    
+    .tabs-component .nav-timeline .nav-link:before {
+        content: '';
+        display: block;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        background-color: #fff;
+        border: 2px solid #ebe9f1;
+        margin-bottom: 0.5rem;
+        transition: all 0.15s ease;
+    }
+    
+    .tabs-component .nav-timeline .nav-link.active:before {
+        border-color: #7367f0;
+        background-color: #7367f0;
+    }
+    
+    .tabs-component .nav-timeline .nav-link.active {
+        color: #7367f0;
+    }
+    
+    .tabs-component .nav-timeline .nav-link.disabled:before {
+        background-color: #f8f8f8;
+    }
+    
+    /* Vertical tabs */
+    .tabs-component.tabs-vertical .nav-tabs {
+        border-bottom: 0;
+        border-right: 1px solid #ebe9f1;
+    }
+    
+    .tabs-component.tabs-vertical .nav-tabs .nav-link {
+        border-radius: 0;
+        text-align: left;
+        margin: 0;
+        padding: 0.75rem 1rem;
+    }
+    
+    .tabs-component.tabs-vertical .nav-tabs .nav-link.active:after {
+        top: 0;
+        bottom: 0;
+        left: auto;
+        right: 0;
+        width: 2px;
+        height: 100%;
+    }
+    
+    .tabs-component.tabs-vertical .nav-pills {
+        border-right: 0;
+    }
+    
+    .tabs-component.tabs-vertical .nav-pills .nav-link {
+        margin-right: 0;
+        margin-bottom: 0.5rem;
+        border-radius: 0.25rem;
+    }
+    
+    /* Scrollable tabs */
+    .tabs-component .nav-scrollable {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE/Edge */
+        position: relative;
+    }
+    
+    .tabs-component .nav-scrollable::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
+    }
+    
+    .tabs-component .scroll-prev,
+    .tabs-component .scroll-next {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 2;
+        width: 2rem;
+        height: 2rem;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+        border: 1px solid #ebe9f1;
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .tabs-component .scroll-prev {
+        left: -0.5rem;
+    }
+    
+    .tabs-component .scroll-next {
+        right: -0.5rem;
+    }
+    
+    /* Dropdown overflow */
+    .tabs-component .more-tabs-dropdown .dropdown-item {
+        padding: 0.5rem 1rem;
+    }
+    
+    .tabs-component .more-tabs-dropdown .dropdown-item i {
+        width: 1.2rem;
+    }
+    
+    /* Tab content */
+    .tabs-component .tab-content {
+        padding: 1rem 0;
+    }
+    
+    .tabs-component .tab-pane {
+        min-height: 50px;
+    }
+    
+    /* Fade animation */
+    .tabs-component .fade-enabled .fade {
+        transition: opacity 0.15s linear;
+    }
+    
+    /* Bordered tabs */
+    .tabs-component .nav-bordered .nav-link {
+        border: 1px solid transparent;
+        margin-bottom: -1px;
+        border-radius: 0.25rem 0.25rem 0 0;
+    }
+    
+    .tabs-component .nav-bordered .nav-link.active {
+        border-color: #ebe9f1;
+        border-bottom-color: #fff;
+    }
+    
+    /* Lazy loading */
+    .tabs-component .lazy-placeholder {
+        min-height: 100px;
+    }
+    
+    /* Progress bar for wizard */
+    .tabs-component .wizard-progress {
+        height: 0.3rem;
+    }
+    
+    .tabs-component .wizard-progress .progress-bar {
+        background-color: #7367f0;
+        transition: width 0.3s ease;
+    }
+    
+    /* Wizard navigation buttons */
+    .tabs-component .wizard-navigation {
+        margin-top: 1.5rem;
+    }
+    
+    /* Accessibility focus styles */
+    .tabs-component .nav-link:focus {
+        outline: none;
+        box-shadow: 0 0 0 0.2rem rgba(115, 103, 240, 0.25);
+    }
+    
+    /* Responsive styles */
+    @media (max-width: 767.98px) {
+        .tabs-component.tabs-vertical {
+            flex-direction: column;
+        }
+        
+        .tabs-component.tabs-vertical .nav-container {
+            width: 100%;
+            margin-right: 0;
+            margin-bottom: 1rem;
+        }
+        
+        .tabs-component.tabs-vertical .nav-tabs,
+        .tabs-component.tabs-vertical .nav-pills {
+            flex-direction: row;
+            border-right: 0;
+            border-bottom: 1px solid #ebe9f1;
+        }
+        
+        .tabs-component.tabs-vertical .nav-tabs .nav-link.active:after {
+            top: auto;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            height: 2px;
+        }
+        
+        .tabs-component .nav-justified .nav-item,
+        .tabs-component .nav-fill .nav-item {
+            width: auto;
+            flex: initial;
+        }
+        
+        .tabs-component .nav-timeline:before {
+            display: none;
+        }
+        
+        .tabs-component .nav-timeline {
+            flex-direction: column;
+        }
+        
+        .tabs-component .nav-timeline .nav-item {
+            margin-bottom: 1rem;
+        }
+        
+        .tabs-component .nav-timeline .nav-link:before {
+            margin-right: 0.5rem;
+            margin-bottom: 0;
+        }
+        
+        .tabs-component .nav-timeline .nav-link {
+            flex-direction: row;
+            text-align: left;
+            padding: 0.5rem;
+        }
+        
+        .tabs-component .wizard-navigation {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .tabs-component .wizard-navigation .btn {
+            width: 100%;
+        }
+    }
+    </style>
+    @endpush
+@endonce

@@ -14,11 +14,12 @@ composer.json**
      - Include dependencies: illuminate/support, illuminate/database, illuminate/console
      - Include Vuexy theme package dependency
      - Include dev dependencies: phpunit/phpunit, mockery/mockery, orchestra/testbench
-     - Define PSR-4 autoloading for Vendor\\CrudGenerator namespace pointing to src/
+     - Define PSR-4 autoloading for Vendor\\Crud namespace pointing to src/
      - Configure Laravel auto-discovery for the service provider
      - Set license to MIT
      - Include keywords for package discovery
      - Set minimum stability to stable
+     make sure dont generate duplicate code or twice
 
 2.** @workspace generate code for following
 README.md**
@@ -34,6 +35,7 @@ README.md**
      - Include license information
      - Add contributing guidelines
      - Include badges for build status, version, etc.
+     make sure dont generate duplicate code or twice
 
 3.** @workspace generate code for following
 config/crud.php**
@@ -52,6 +54,7 @@ config/crud.php**
      - Define custom field type mappings (database to PHP, database to HTML input)
      - Include export/import format options (CSV, Excel, PDF)
      - Add validation rule templates for common field types
+     make sure dont generate duplicate code or twice
 
 ## 2. Core Interfaces/Contracts
 
@@ -59,7 +62,7 @@ config/crud.php**
 src/Contracts/AnalyzerInterface.php**
    - Purpose: Define standard methods for analyzers
    - Code Requirements:
-     - Create a PHP interface with namespace Vendor\CrudGenerator\Contracts
+     - Create a PHP interface with namespace SwatTech\Crud\Contracts
      - Define analyze(string $table) method
      - Include getResults() method to retrieve analysis results
      - Add setConnection(string $connection) method
@@ -67,12 +70,13 @@ src/Contracts/AnalyzerInterface.php**
      - Add getDatabaseName() method
      - Include supportedRelationships() method returning array of supported types
      - Add detailed PHPDoc blocks for each method
+     make sure dont generate duplicate code or twice
 
 5.** @workspace generate code for following
 src/Contracts/GeneratorInterface.php**
    - Purpose: Define standard methods for all generators
    - Code Requirements:
-     - Create a PHP interface with namespace Vendor\CrudGenerator\Contracts
+     - Create a PHP interface with namespace SwatTech\Crud\Contracts
      - Define generate(string $table, array $options = []) method
      - Include setOptions(array $options) method for generator configuration
      - Add getStub() method for template retrieval
@@ -82,12 +86,13 @@ src/Contracts/GeneratorInterface.php**
      - Add getGeneratedFiles() method to return array of generated files
      - Include supportsCustomization() method (boolean)
      - Add detailed PHPDoc blocks for each method
+     make sure dont generate duplicate code or twice
 
 6.** @workspace generate code for following
 src/Contracts/RepositoryInterface.php**
    - Purpose: Define repository pattern methods
    - Code Requirements:
-     - Create a PHP interface with namespace Vendor\CrudGenerator\Contracts
+     - Create a PHP interface with namespace SwatTech\Crud\Contracts
      - Define all() method for retrieving all records (with filter, sort parameters)
      - Include paginate() method with page, perPage parameters
      - Add create(array $data) method for creating records
@@ -100,6 +105,7 @@ src/Contracts/RepositoryInterface.php**
      - Include getCacheLifetime() method
      - Add clearCache() method
      - Include detailed PHPDoc blocks for each method
+     make sure dont generate duplicate code or twice
 
 ## 3. Helper/Utility Classes
 
@@ -107,7 +113,7 @@ src/Contracts/RepositoryInterface.php**
 src/Helpers/StringHelper.php**
    - Purpose: String manipulation utilities
    - Code Requirements:
-     - Create a class with namespace Vendor\CrudGenerator\Helpers
+     - Create a class with namespace SwatTech\Crud\Helpers
      - Implement static methods for string manipulation
      - Add camelCase(string $value) method
      - Include studlyCase(string $value) method for Pascal case conversion
@@ -120,12 +126,13 @@ src/Helpers/StringHelper.php**
      - Add isValidClassName(string $className) method
      - Include generateRandomString(int $length) method
      - Add detailed PHPDoc blocks for each method
+     make sure dont generate duplicate code or twice
 
 8.** @workspace generate code for following
 src/Helpers/SchemaHelper.php**
    - Purpose: Database schema utilities
    - Code Requirements:
-     - Create a class with namespace Vendor\CrudGenerator\Helpers
+     - Create a class with namespace SwatTech\Crud\Helpers
      - Implement getTableColumns(string $table, string $connection = null) method
      - Add getTableIndexes(string $table, string $connection = null) method
      - Include getForeignKeys(string $table, string $connection = null) method
@@ -138,13 +145,14 @@ src/Helpers/SchemaHelper.php**
      - Add getEnumValues(string $table, string $column, string $connection = null) method
      - Use Laravel's Schema facade and DB facade for implementation
      - Include detailed PHPDoc blocks for each method
+     make sure dont generate duplicate code or twice
 
 9.** @workspace generate code for following
 src/Helpers/RelationshipHelper.php**
    - Purpose: Relationship utilities
    - Dependencies: StringHelper, SchemaHelper
    - Code Requirements:
-     - Create a class with namespace Vendor\CrudGenerator\Helpers
+     - Create a class with namespace SwatTech\Crud\Helpers
      - Implement guessRelationshipMethod(string $table, string $foreignKey) method
      - Add guessInverseRelationship(string $relationshipType) method
      - Include formatRelationshipMethod(string $type, string $relatedTable) method
@@ -156,12 +164,13 @@ src/Helpers/RelationshipHelper.php**
      - Include validateRelationships(array $relationships) method
      - Add getPotentialRelations(string $table) method
      - Include detailed PHPDoc blocks for each method
+     make sure dont generate duplicate code or twice
 
 10.** @workspace generate code for following
 src/Utilities/ResponseBuilder.php**
     - Purpose: API response formatting
     - Code Requirements:
-      - Create a class with namespace Vendor\CrudGenerator\Utilities
+      - Create a class with namespace SwatTech\Crud\Utilities
       - Implement success(mixed $data, string $message = '', int $code = 200) method
       - Add error(string $message, int $code = 400, array $errors = []) method
       - Include collection(Collection $collection, $transformer = null) method
@@ -173,12 +182,13 @@ src/Utilities/ResponseBuilder.php**
       - Include transform(mixed $data, $transformer) method
       - Add setStatusCode(int $code) method
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 11.** @workspace generate code for following
 src/Utilities/FilterBuilder.php**
     - Purpose: Query filter builder
     - Code Requirements:
-      - Create a class with namespace Vendor\CrudGenerator\Utilities
+      - Create a class with namespace SwatTech\Crud\Utilities
       - Implement apply(Builder $query, array $filters) method
       - Add parseFilterString(string $filterString) method
       - Include addCondition(Builder $query, string $field, string $operator, $value) method
@@ -190,12 +200,13 @@ src/Utilities/FilterBuilder.php**
       - Include getSupportedOperators() method
       - Add escapeValue($value) method for security
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 12.** @workspace generate code for following
 src/Utilities/SortBuilder.php**
     - Purpose: Query sort builder
     - Code Requirements:
-      - Create a class with namespace Vendor\CrudGenerator\Utilities
+      - Create a class with namespace SwatTech\Crud\Utilities
       - Implement apply(Builder $query, array $sorts) method
       - Add parseSortString(string $sortString) method
       - Include addSort(Builder $query, string $field, string $direction = 'asc') method
@@ -207,12 +218,13 @@ src/Utilities/SortBuilder.php**
       - Include validateDirection(string $direction) method
       - Add applyCaseInsensitiveSort(Builder $query, string $field, string $direction) method
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 13.** @workspace generate code for following
 src/Utilities/PaginationHelper.php**
     - Purpose: Pagination utilities
     - Code Requirements:
-      - Create a class with namespace Vendor\CrudGenerator\Utilities
+      - Create a class with namespace SwatTech\Crud\Utilities
       - Implement paginate(Builder $query, int $page = 1, int $perPage = 15) method
       - Add simplePaginate(Builder $query, int $page = 1, int $perPage = 15) method
       - Include cursorPaginate(Builder $query, int $perPage = 15, string $cursor = null) method
@@ -224,6 +236,7 @@ src/Utilities/PaginationHelper.php**
       - Include getPaginationMetadata(LengthAwarePaginator $paginator) method
       - Add formatPaginationResult(LengthAwarePaginator $paginator) method
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 ## 4. Analyzer Components
 
@@ -248,6 +261,7 @@ src/Analyzers/DatabaseAnalyzer.php**
       - Include setConnection(string $connection) method
       - Add getResults() method to return analysis results
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 15.** @workspace generate code for following
 src/Analyzers/Relationships/BelongsToAnalyzer.php**
@@ -267,6 +281,7 @@ src/Analyzers/Relationships/BelongsToAnalyzer.php**
       - Add identifyRequiredRelationships(array $relationships) method
       - Include getResults() method to return analysis results
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 16.** @workspace generate code for following
 src/Analyzers/Relationships/HasManyAnalyzer.php**
@@ -286,6 +301,7 @@ src/Analyzers/Relationships/HasManyAnalyzer.php**
       - Add mapCollectionRelationships(array $relationships) method
       - Include getResults() method to return analysis results
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 17.** @workspace generate code for following
 src/Analyzers/Relationships/HasOneAnalyzer.php**
@@ -304,6 +320,7 @@ src/Analyzers/Relationships/HasOneAnalyzer.php**
       - Include detectSoftDeletesInChildren(array $relationships) method
       - Add getResults() method to return analysis results
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 18.** @workspace generate code for following
 src/Analyzers/Relationships/BelongsToManyAnalyzer.php**
@@ -323,6 +340,7 @@ src/Analyzers/Relationships/BelongsToManyAnalyzer.php**
       - Add identifyInverseRelationships(array $relationships) method
       - Include getResults() method to return analysis results
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 19.** @workspace generate code for following
 src/Analyzers/Relationships/MorphToAnalyzer.php**
@@ -341,6 +359,7 @@ src/Analyzers/Relationships/MorphToAnalyzer.php**
       - Include detectSoftDeletesInPolymorphic(array $relationships) method
       - Add getResults() method to return analysis results
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 20.** @workspace generate code for following
 src/Analyzers/Relationships/MorphManyAnalyzer.php**
@@ -359,6 +378,7 @@ src/Analyzers/Relationships/MorphManyAnalyzer.php**
       - Include detectSoftDeletesInChildren(array $relationships) method
       - Add getResults() method to return analysis results
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 21.** @workspace generate code for following
 src/Analyzers/RelationshipAnalyzer.php**
@@ -379,6 +399,7 @@ src/Analyzers/RelationshipAnalyzer.php**
       - Include handleComplexRelationships(string $table) method
       - Add getResults() method to return analysis results
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 ## 5. Base Implementation Classes
 
@@ -403,6 +424,7 @@ src/Repositories/BaseRepository.php**
       - Include support for query scopes from the model
       - Add protected method for search functionality
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 23.** @workspace generate code for following
 src/Repositories/CacheDecorator.php**
@@ -423,6 +445,7 @@ src/Repositories/CacheDecorator.php**
       - Include protected setCachePrefix(string $prefix) method
       - Add configurable cache lifetime support
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 24.** @workspace generate code for following
 src/Services/BaseService.php**
@@ -447,6 +470,7 @@ src/Services/BaseService.php**
       - Include protected log(string $level, string $message, array $context = []) method
       - Add protected manageCaching() methods
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 25.** @workspace generate code for following
 src/Services/CrudService.php**
@@ -468,6 +492,7 @@ src/Services/CrudService.php**
       - Add validateComplexRules(array $data) method
       - Include specialized query methods for common business cases
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 ## 6. Generator Components
 
@@ -499,6 +524,7 @@ src/Generators/ModelGenerator.php**
       - Add setupFactoryReference() method
       - Include setupTraits(array $options) method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 27.** @workspace generate code for following
 src/Generators/MigrationGenerator.php**
@@ -524,6 +550,7 @@ src/Generators/MigrationGenerator.php**
       - Add implementUniqueConstraints(array $columns) method
       - Include setupDataSeeding(array $options) method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 28.** @workspace generate code for following
 src/Generators/FactoryGenerator.php**
@@ -548,6 +575,7 @@ src/Generators/FactoryGenerator.php**
       - Include implementCountMethods() method
       - Add generateTraits(array $traits) method
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 29.** @workspace generate code for following
 src/Generators/SeederGenerator.php**
@@ -572,6 +600,7 @@ src/Generators/SeederGenerator.php**
       - Include generateStaticDataSeeding(array $staticData) method
       - Add createDemonstrationData(array $demoData) method
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 30.** @workspace generate code for following
 src/Generators/RepositoryGenerator.php**
@@ -599,6 +628,7 @@ src/Generators/RepositoryGenerator.php**
       - Add setupRelationshipLoading() method
       - Include setupEventDispatching() method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 31.** @workspace generate code for following
 src/Generators/ServiceGenerator.php**
@@ -624,6 +654,7 @@ src/Generators/ServiceGenerator.php**
       - Add generateLoggingFunctionality() method
       - Include setupCacheManagement() method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 32.** @workspace generate code for following
 src/Generators/RequestGenerator.php**
@@ -648,6 +679,7 @@ src/Generators/RequestGenerator.php**
       - Include setupSanitization() method
       - Add generateRuleObjects(array $complexRules) method
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 33.** @workspace generate code for following
 src/Generators/PolicyGenerator.php**
@@ -672,6 +704,7 @@ src/Generators/PolicyGenerator.php**
       - Include generateCustomAbilityMethods(array $abilities) method
       - Add generateResourceSpecificPolicies(string $table) method
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 34.** @workspace generate code for following
 src/Generators/ControllerGenerator.php**
@@ -697,6 +730,7 @@ src/Generators/ControllerGenerator.php**
       - Add setupTransactionHandling() method
       - Include setupErrorHandling() method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 35.** @workspace generate code for following
 src/Generators/ResourceGenerator.php**
@@ -721,6 +755,7 @@ src/Generators/ResourceGenerator.php**
       - Include setupVersioning(array $options) method
       - Add implementCustomSerialization(array $options) method
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 36.** @workspace generate code for following
 src/Generators/RouteGenerator.php**
@@ -744,6 +779,7 @@ src/Generators/RouteGenerator.php**
       - Add setupApiPrefixAndDomain(array $options) method
       - Include setupRouteCaching() method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 37.** @workspace generate code for following
 src/Generators/ObserverGenerator.php**
@@ -768,6 +804,7 @@ src/Generators/ObserverGenerator.php**
       - Include implementSearchIndexing(array $options) method
       - Add setupAuditLogging() method
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 38.** @workspace generate code for following
 src/Generators/EventGenerator.php**
@@ -792,6 +829,7 @@ src/Generators/EventGenerator.php**
       - Include implementEventInterfaces(array $interfaces) method
       - Add setupEventDispatching() method
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 39.** @workspace generate code for following
 src/Generators/ListenerGenerator.php**
@@ -816,6 +854,7 @@ src/Generators/ListenerGenerator.php**
       - Include implementConditionalProcessing() method
       - Add generateEventSubscriberOptions(array $events) method
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 40.** @workspace generate code for following
 src/Generators/JobGenerator.php**
@@ -840,6 +879,7 @@ src/Generators/JobGenerator.php**
       - Include setupProgressTracking() method
       - Add createChainedJobs(array $chainedJobs) method
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 41.** @workspace generate code for following
 src/Generators/ViewGenerator.php**
@@ -867,6 +907,7 @@ src/Generators/ViewGenerator.php**
       - Add setupBulkActionControls(string $table) method
       - Include generateRelationshipDisplayComponents(string $table, array $relationships) method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 ## 7. Vuexy Theme Stubs
 
@@ -888,6 +929,7 @@ src/stubs/vuexy/layout.stub**
       - Include modal container for dynamic modals
       - Add theme switcher (light/dark mode)
       - Include responsive design breakpoints
+      make sure dont generate duplicate code or twice
 
 43.** @workspace generate code for following
 src/stubs/vuexy/views/index.blade.stub**
@@ -908,6 +950,7 @@ src/stubs/vuexy/views/index.blade.stub**
       - Add custom column rendering options
       - Include inline editing capability
       - Add row expansion for details
+      make sure dont generate duplicate code or twice
 
 44.** @workspace generate code for following
 src/stubs/vuexy/views/create.blade.stub**
@@ -927,6 +970,7 @@ src/stubs/vuexy/views/create.blade.stub**
       - Include form sections/tabs for organization
       - Add save/cancel buttons
       - Include client-side validation
+      make sure dont generate duplicate code or twice
 
 45.** @workspace generate code for following
 src/stubs/vuexy/views/edit.blade.stub**
@@ -946,6 +990,7 @@ src/stubs/vuexy/views/edit.blade.stub**
       - Include save options (save, save and continue)
       - Add preview functionality
       - Include field permissions/restrictions
+      make sure dont generate duplicate code or twice
 
 46.** @workspace generate code for following
 src/stubs/vuexy/views/show.blade.stub**
@@ -965,6 +1010,7 @@ src/stubs/vuexy/views/show.blade.stub**
       - Include back button
       - Add responsive layout for mobile
       - Include media display (images, files)
+      make sure dont generate duplicate code or twice
 
 47.** @workspace generate code for following
 src/stubs/vuexy/components/data-table.stub**
@@ -985,6 +1031,7 @@ src/stubs/vuexy/components/data-table.stub**
       - Add loading state
       - Include responsive handling
       - Add accessibility attributes
+      make sure dont generate duplicate code or twice
 
 48.** @workspace generate code for following
 src/stubs/vuexy/components/modal.stub**
@@ -1005,6 +1052,7 @@ src/stubs/vuexy/components/modal.stub**
       - Add dynamic content area
       - Include loading state
       - Add accessibility attributes
+      make sure dont generate duplicate code or twice
 
 49.** @workspace generate code for following
 src/stubs/vuexy/components/filter.stub**
@@ -1025,6 +1073,7 @@ src/stubs/vuexy/components/filter.stub**
       - Add collapsible/expandable interface
       - Include mobile-friendly design
       - Add accessibility attributes
+      make sure dont generate duplicate code or twice
 
 50.** @workspace generate code for following
 src/stubs/vuexy/components/form.stub**
@@ -1045,6 +1094,7 @@ src/stubs/vuexy/components/form.stub**
       - Add responsive grid support
       - Include accessibility attributes
       - Add CSRF protection
+      make sure dont generate duplicate code or twice
 
 51.** @workspace generate code for following
 src/stubs/vuexy/components/nested-form.stub**
@@ -1065,6 +1115,7 @@ src/stubs/vuexy/components/nested-form.stub**
       - Add inheritance pattern support
       - Include limit controls (min/max items)
       - Add accessibility attributes
+      make sure dont generate duplicate code or twice
 
 52.** @workspace generate code for following
 src/stubs/vuexy/components/card.stub**
@@ -1085,6 +1136,7 @@ src/stubs/vuexy/components/card.stub**
       - Add card group capability
       - Include draggable option
       - Add accessibility attributes
+      make sure dont generate duplicate code or twice
 
 53.** @workspace generate code for following
 src/stubs/vuexy/components/tabs.stub**
@@ -1105,6 +1157,7 @@ src/stubs/vuexy/components/tabs.stub**
       - Add overflow handling for many tabs
       - Include accessibility attributes (ARIA)
       - Add keyboard navigation support
+      make sure dont generate duplicate code or twice
 
 54.** @workspace generate code for following
 src/stubs/vuexy/components/file-upload.stub**
@@ -1125,6 +1178,7 @@ src/stubs/vuexy/components/file-upload.stub**
       - Add delete/remove functionality
       - Include error handling
       - Add accessibility attributes
+      make sure dont generate duplicate code or twice
 
 55.** @workspace generate code for following
 src/stubs/vuexy/components/charts.stub**
@@ -1145,6 +1199,7 @@ src/stubs/vuexy/components/charts.stub**
       - Add empty state handling
       - Include loading state
       - Add accessibility attributes
+      make sure dont generate duplicate code or twice
 
 56.** @workspace generate code for following
 src/stubs/vuexy/components/export-buttons.stub**
@@ -1164,6 +1219,7 @@ src/stubs/vuexy/components/export-buttons.stub**
       - Include notification on completion
       - Add accessibility attributes
       - Include keyboard shortcuts
+      make sure dont generate duplicate code or twice
 
 57.** @workspace generate code for following
 src/stubs/vuexy/components/bulk-actions.stub**
@@ -1183,6 +1239,8 @@ src/stubs/vuexy/components/bulk-actions.stub**
       - Include permission checking
       - Add accessibility attributes
       - Include keyboard shortcuts
+      make sure dont generate duplicate code or twice
+
 
 ## 8. Enterprise Feature Components
 
@@ -1204,6 +1262,7 @@ src/Features/AuditTrail/AuditManager.php**
       - Add implementRetentionPolicies(int $days) method
       - Include createExportFunctionality(string $format) method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 59.** @workspace generate code for following
 src/Features/RBAC/RoleManager.php**
@@ -1223,6 +1282,7 @@ src/Features/RBAC/RoleManager.php**
       - Add implementUiIntegration() method
       - Include synchronizeWithExternalSystems(array $mapping) method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 60.** @workspace generate code for following
 src/Features/Versioning/VersionManager.php**
@@ -1242,6 +1302,7 @@ src/Features/Versioning/VersionManager.php**
       - Add implementRetentionPolicies(int $days) method
       - Include createApprovalWorkflows() method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 61.** @workspace generate code for following
 src/Features/Export/ExportManager.php**
@@ -1263,6 +1324,7 @@ src/Features/Export/ExportManager.php**
       - Add createStyleCustomization(array $styles) method
       - Include setupHeaderFooterOptions(array $options) method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 62.** @workspace generate code for following
 src/Features/Import/ImportManager.php**
@@ -1283,6 +1345,7 @@ src/Features/Import/ImportManager.php**
       - Include setupRollback() method
       - Add createLogging() method
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 63.** @workspace generate code for following
 src/Features/Notifications/NotificationManager.php**
@@ -1302,6 +1365,7 @@ src/Features/Notifications/NotificationManager.php**
       - Add managePreferences(int $userId, array $preferences) method
       - Include createTestingTools() method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 64.** @workspace generate code for following
 src/Features/Internationalization/TranslationManager.php**
@@ -1321,6 +1385,7 @@ src/Features/Internationalization/TranslationManager.php**
       - Add handleMissingTranslations() method
       - Include importExportTranslations(string $format) method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 65.** @workspace generate code for following
 src/Features/BatchOperations/BatchManager.php**
@@ -1340,6 +1405,7 @@ src/Features/BatchOperations/BatchManager.php**
       - Add configureRateLimiting(int $limit, string $period) method
       - Include implementRetryLogic(int $attempts, int $backoff) method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 66.** @workspace generate code for following
 src/Features/ActivityLog/ActivityManager.php**
@@ -1359,6 +1425,7 @@ src/Features/ActivityLog/ActivityManager.php**
       - Add setupAnalytics() method
       - Include configureAlerting(array $triggers) method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 67.** @workspace generate code for following
 src/Features/SoftDeletes/TrashManager.php**
@@ -1378,6 +1445,7 @@ src/Features/SoftDeletes/TrashManager.php**
       - Add emptyTrash(string $modelType = null) method
       - Include configureNotifications() method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 ## 9. Command System
 
@@ -1402,6 +1470,7 @@ src/Commands/GenerateCrudCommand.php**
       - Include showProgressAndErrors() method
       - Add implementDryRun(bool $dryRun) method
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 69.** @workspace generate code for following
 src/Commands/GenerateApiCommand.php**
@@ -1423,6 +1492,7 @@ src/Commands/GenerateApiCommand.php**
       - Add createApiResponseTransformers(string $table) method
       - Include handleMultipleVersions(array $versions) method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 70.** @workspace generate code for following
 src/Commands/GenerateRelationshipsCommand.php**
@@ -1442,6 +1512,7 @@ src/Commands/GenerateRelationshipsCommand.php**
       - Add createRelationshipForms(string $table, array $relationships) method
       - Include handlePolymorphicRelationships(string $table, array $relationships) method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 71.** @workspace generate code for following
 src/Commands/GenerateTestsCommand.php**
@@ -1462,6 +1533,7 @@ src/Commands/GenerateTestsCommand.php**
       - Include setupApiTesting(string $table) method
       - Add createValidationRuleTests(string $table) method
       - Include detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 72.** @workspace generate code for following
 src/Commands/GenerateDocumentationCommand.php**
@@ -1481,6 +1553,9 @@ src/Commands/GenerateDocumentationCommand.php**
       - Add documentValidationRules(string $table) method
       - Include createUiUserGuides(string $table) method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
+
+---------------------------------------------------------- Done --------------------------------------------
 
 ## 10. Documentation Files
 
@@ -1498,6 +1573,7 @@ docs/index.md**
       - Include screenshots of generated components
       - Add FAQ section with common questions
       - Include community links and support information
+      make sure dont generate duplicate code or twice
 
 74.** @workspace generate code for following
 docs/installation.md**
@@ -1513,6 +1589,7 @@ docs/installation.md**
       - Include verification steps
       - Add upgrade guide for different versions
       - Include uninstallation instructions if needed
+      make sure dont generate duplicate code or twice
 
 75.** @workspace generate code for following
 docs/configuration.md**
@@ -1528,6 +1605,7 @@ docs/configuration.md**
       - Include performance tuning settings
       - Add security-related configuration
       - Include feature toggle documentation
+      make sure dont generate duplicate code or twice
 
 76.** @workspace generate code for following
 docs/relationships.md**
@@ -1543,6 +1621,7 @@ docs/relationships.md**
       - Include validation rule generation for relationships
       - Add UI handling for relationship forms
       - Include advanced relationship scenarios
+      make sure dont generate duplicate code or twice
 
 77.** @workspace generate code for following
 docs/advanced-usage.md**
@@ -1558,6 +1637,7 @@ docs/advanced-usage.md**
       - Include security hardening recommendations
       - Add workflow example implementations
       - Include migration strategies for existing applications
+      make sure dont generate duplicate code or twice
 
 78.** @workspace generate code for following
 docs/extending.md**
@@ -1573,6 +1653,7 @@ docs/extending.md**
       - Include new feature addition guidelines
       - Add plugin system documentation if applicable
       - Include theme customization instructions
+      make sure dont generate duplicate code or twice
 
 ## 11. Testing Suite
 
@@ -1594,6 +1675,7 @@ tests/Feature/CrudGenerationTest.php**
       - Add testDatabaseSetup() method
       - Include tearDown() method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 80.** @workspace generate code for following
 tests/Unit/RelationshipAnalyzerTest.php**
@@ -1613,6 +1695,7 @@ tests/Unit/RelationshipAnalyzerTest.php**
       - Add testComplexRelationships() method
       - Include testCrossDatabaseRelationships() method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 81.** @workspace generate code for following
 tests/Integration/RepositoryTest.php**
@@ -1632,6 +1715,7 @@ tests/Integration/RepositoryTest.php**
       - Add testSecurityChecks() method
       - Include testPerformance() method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 82.** @workspace generate code for following
 tests/Browser/CrudUiTest.php**
@@ -1651,6 +1735,7 @@ tests/Browser/CrudUiTest.php**
       - Add testFileUpload() method
       - Include testJavaScriptFunctionality() method
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 ## 12. CI/CD Integration
 
@@ -1666,6 +1751,7 @@ src/Facades/Crud.php**
       - Add mock method for testing
       - Include PHPDoc blocks for IDE support
       - Add detailed documentation for each method
+      make sure dont generate duplicate code or twice
 
 84.** @workspace generate code for following
 src/CrudServiceProvider.php**
@@ -1687,6 +1773,7 @@ src/CrudServiceProvider.php**
       - Add registerFacade() method
       - Include provides() method for deferred loading
       - Add detailed PHPDoc blocks for each method
+      make sure dont generate duplicate code or twice
 
 85.** @workspace generate code for following
 .github/workflows/tests.yml**
@@ -1704,6 +1791,7 @@ src/CrudServiceProvider.php**
       - Include failure notifications
       - Add branch filtering configuration
       - Include status badges generation
+      make sure dont generate duplicate code or twice
 
 86.** @workspace generate code for following
 .github/workflows/quality.yml**
@@ -1721,5 +1809,6 @@ src/CrudServiceProvider.php**
       - Include changelog generation
       - Add deployment to GitHub Pages for docs
       - Include notification system for failures
+      make sure dont generate duplicate code or twice
 
 This comprehensive list provides detailed code requirements for all 86 files in the Laravel 12 Crud package. Each file is documented with its specific purpose, dependencies, and detailed features to guide code generation.

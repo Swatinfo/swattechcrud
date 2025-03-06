@@ -1,0 +1,700 @@
+{{-- 
+Component Class: SwatTech\Crud\View\Components\Charts
+
+Properties:
+    - id: string - Unique identifier for the chart component (default: auto-generated)
+    - type: string - Chart type: line, bar, area, pie, donut, radar, polarArea, scatter, heatmap, candlestick, bubble, radialBar (default: line)
+    - data: array/json - Chart data series (required)
+    - labels: array - Labels for data points (for category charts)
+    - height: string - Height of the chart (default: 400px)
+    - width: string - Width of the chart (default: 100%)
+    - options: array - Additional chart options
+    - colors: array - Custom colors for series (default: theme colors)
+    - title: string - Chart title
+    - subtitle: string - Chart subtitle
+    - xAxisTitle: string - X-axis title
+    - yAxisTitle: string - Y-axis title
+    - stacked: boolean - Whether to stack series (for applicable charts) (default: false)
+    - horizontal: boolean - Whether to display bars horizontally (for bar charts) (default: false)
+    - legend: boolean - Whether to show legend (default: true)
+    - legendPosition: string - Legend position: top, right, bottom, left (default: top)
+    - grid: boolean - Whether to show grid lines (default: true)
+    - animation: boolean - Whether to animate the chart (default: true)
+    - animationDuration: integer - Duration of animations in ms (default: 800)
+    - tooltips: boolean - Whether to show tooltips (default: true)
+    - exportable: boolean - Whether to show export options (default: true)
+    - drilldown: boolean - Whether to enable drill-down functionality (default: false)
+    - loading: boolean - Whether to show loading state (default: false)
+    - emptyMessage: string - Message to display when no data is available (default: 'No data available')
+    - responsive: boolean - Whether the chart should be responsive (default: true)
+    - decimals: integer - Number of decimal places for values (default: 0)
+    - theme: string - Chart theme: light, dark, custom (default: light)
+    - containerClass: string - Additional CSS classes for the chart container (default: '')
+--}}
+
+@props([
+    'id' => 'chart-'.uniqid(),
+    'type' => 'line',
+    'data' => [],
+    'labels' => [],
+    'height' => '400px',
+    'width' => '100%',
+    'options' => [],
+    'colors' => [],
+    'title' => null,
+    'subtitle' => null,
+    'xAxisTitle' => null,
+    'yAxisTitle' => null,
+    'stacked' => false,
+    'horizontal' => false,
+    'legend' => true,
+    'legendPosition' => 'top',
+    'grid' => true,
+    'animation' => true,
+    'animationDuration' => 800,
+    'tooltips' => true,
+    'exportable' => true,
+    'drilldown' => false,
+    'loading' => false,
+    'emptyMessage' => 'No data available',
+    'responsive' => true,
+    'decimals' => 0,
+    'theme' => 'light',
+    'containerClass' => ''
+])
+
+@php
+    // Convert data to JSON if it's not already a JSON string
+    $chartData = is_string($data) ? $data : json_encode($data);
+    $chartLabels = is_string($labels) ? $labels : json_encode($labels);
+    
+    // Default color palette for the chart
+    $defaultColors = [
+        '#7367f0', // Primary
+        '#00cfe8', // Info
+        '#28c76f', // Success
+        '#ff9f43', // Warning
+        '#ea5455', // Danger
+        '#82868b', // Secondary
+        '#a8aaae', // Light
+        '#4b4b4b', // Dark
+        '#9c8cfc', // Primary light
+        '#1fe8e5', // Info light
+        '#55dd6f', // Success light
+        '#ffc085', // Warning light
+        '#f29292', // Danger light
+        '#b9babb', // Secondary light
+    ];
+    
+    // Convert colors to JSON if provided
+    $chartColors = !empty($colors) ? (is_string($colors) ? $colors : json_encode($colors)) : json_encode($defaultColors);
+    
+    // Generate a unique ID for chart options
+    $optionsId = $id . '-options';
+    
+    // Check if data is empty
+    $isEmpty = empty($data) || (is_array($data) && count($data) === 0) || $chartData === '[]' || $chartData === '{}';
+    
+    // Determine if dark mode should be used
+    $isDarkTheme = $theme === 'dark';
+    
+    // Base options for all chart types
+    $baseOptions = [
+        'chart' => [
+            'id' => $id,
+            'type' => $type,
+            'height' => $height,
+            'width' => $width,
+            'toolbar' => [
+                'show' => $exportable,
+                'tools' => [
+                    'download' => $exportable,
+                    'selection' => true,
+                    'zoom' => true,
+                    'zoomin' => true,
+                    'zoomout' => true,
+                    'pan' => true,
+                    'reset' => true,
+                ]
+            ],
+            'animations' => [
+                'enabled' => $animation,
+                'speed' => $animationDuration,
+                'easing' => 'easeinout'
+            ],
+            'background' => 'transparent',
+            'fontFamily' => 'Montserrat, sans-serif',
+        ],
+        'colors' => !empty($colors) ? $colors : $defaultColors,
+        'grid' => [
+            'show' => $grid,
+            'borderColor' => $isDarkTheme ? '#3b4253' : '#ebe9f1',
+            'strokeDashArray' => 4,
+            'padding' => [
+                'top' => 10,
+                'right' => 10,
+                'bottom' => 10,
+                'left' => 10
+            ]
+        ],
+        'legend' => [
+            'show' => $legend,
+            'position' => $legendPosition,
+            'horizontalAlign' => 'center',
+            'fontFamily' => 'Montserrat, sans-serif',
+            'fontSize' => '14px',
+            'markers' => [
+                'width' => 12,
+                'height' => 12,
+                'strokeWidth' => 0,
+                'radius' => 12
+            ]
+        ],
+        'tooltip' => [
+            'enabled' => $tooltips,
+            'shared' => true,
+            'theme' => $isDarkTheme ? 'dark' : 'light',
+            'y' => [
+                'formatter' => 'function (val) { return val.toFixed(' . $decimals . ') }'
+            ]
+        ],
+        'stroke' => [
+            'curve' => 'smooth',
+            'width' => $type === 'area' ? 2 : 3
+        ],
+        'dataLabels' => [
+            'enabled' => false
+        ],
+    ];
+    
+    if ($title || $subtitle) {
+        $baseOptions['title'] = [
+            'text' => $title,
+            'align' => 'center',
+            'style' => [
+                'fontSize' => '16px',
+                'fontWeight' => 500,
+                'fontFamily' => 'Montserrat, sans-serif',
+                'color' => $isDarkTheme ? '#d0d2d6' : '#5e5873'
+            ]
+        ];
+        
+        if ($subtitle) {
+            $baseOptions['subtitle'] = [
+                'text' => $subtitle,
+                'align' => 'center',
+                'style' => [
+                    'fontSize' => '14px',
+                    'fontWeight' => 400,
+                    'fontFamily' => 'Montserrat, sans-serif',
+                    'color' => $isDarkTheme ? '#b4b7bd' : '#6e6b7b'
+                ]
+            ];
+        }
+    }
+    
+    if ($xAxisTitle || $yAxisTitle || !empty($labels)) {
+        $baseOptions['xaxis'] = [
+            'categories' => !empty($labels) ? $labels : [],
+            'title' => [
+                'text' => $xAxisTitle,
+                'style' => [
+                    'fontSize' => '14px',
+                    'fontFamily' => 'Montserrat, sans-serif',
+                    'color' => $isDarkTheme ? '#b4b7bd' : '#6e6b7b'
+                ]
+            ],
+            'labels' => [
+                'style' => [
+                    'colors' => $isDarkTheme ? '#b4b7bd' : '#6e6b7b',
+                    'fontSize' => '12px',
+                    'fontFamily' => 'Montserrat, sans-serif'
+                ]
+            ],
+            'axisBorder' => [
+                'show' => true,
+                'color' => $isDarkTheme ? '#3b4253' : '#ebe9f1'
+            ],
+            'axisTicks' => [
+                'show' => true,
+                'color' => $isDarkTheme ? '#3b4253' : '#ebe9f1'
+            ]
+        ];
+        
+        $baseOptions['yaxis'] = [
+            'title' => [
+                'text' => $yAxisTitle,
+                'style' => [
+                    'fontSize' => '14px',
+                    'fontFamily' => 'Montserrat, sans-serif',
+                    'color' => $isDarkTheme ? '#b4b7bd' : '#6e6b7b'
+                ]
+            ],
+            'labels' => [
+                'style' => [
+                    'colors' => $isDarkTheme ? '#b4b7bd' : '#6e6b7b',
+                    'fontSize' => '12px',
+                    'fontFamily' => 'Montserrat, sans-serif'
+                ],
+                'formatter' => 'function (val) { return val.toFixed(' . $decimals . ') }'
+            ]
+        ];
+    }
+    
+    // Chart type specific options
+    if ($type === 'bar') {
+        $baseOptions['plotOptions']['bar'] = [
+            'horizontal' => $horizontal,
+            'columnWidth' => '55%',
+            'borderRadius' => 4,
+            'distributed' => false,
+            'dataLabels' => [
+                'position' => 'top'
+            ]
+        ];
+    } elseif ($type === 'pie' || $type === 'donut') {
+        $baseOptions['plotOptions']['pie'] = [
+            'donut' => [
+                'size' => $type === 'donut' ? '65%' : '0%',
+                'labels' => [
+                    'show' => true,
+                    'name' => [
+                        'fontSize' => '14px',
+                        'fontFamily' => 'Montserrat, sans-serif'
+                    ],
+                    'value' => [
+                        'fontSize' => '16px',
+                        'fontFamily' => 'Montserrat, sans-serif',
+                        'formatter' => 'function (val) { return val.toFixed(' . $decimals . ') }'
+                    ],
+                    'total' => [
+                        'show' => true,
+                        'fontSize' => '16px',
+                        'fontFamily' => 'Montserrat, sans-serif',
+                        'formatter' => 'function (w) { 
+                            return w.globals.seriesTotals.reduce((a, b) => a + b, 0).toFixed(' . $decimals . ')
+                        }'
+                    ]
+                ]
+            ]
+        ];
+        // For pie/donut, we don't need the axis
+        unset($baseOptions['xaxis']);
+        unset($baseOptions['yaxis']);
+    } elseif ($type === 'area') {
+        $baseOptions['fill'] = [
+            'type' => 'gradient',
+            'gradient' => [
+                'shadeIntensity' => 1,
+                'opacityFrom' => 0.7,
+                'opacityTo' => 0.3,
+                'stops' => [0, 90, 100]
+            ]
+        ];
+    } elseif ($type === 'radar') {
+        $baseOptions['plotOptions']['radar'] = [
+            'polygons' => [
+                'strokeColors' => $isDarkTheme ? '#3b4253' : '#ebe9f1',
+                'fill' => [
+                    'colors' => [$isDarkTheme ? '#3b4253' : '#f8f8f8']
+                ]
+            ]
+        ];
+    } elseif ($type === 'radialBar') {
+        $baseOptions['plotOptions']['radialBar'] = [
+            'hollow' => [
+                'size' => '70%'
+            ],
+            'track' => [
+                'background' => $isDarkTheme ? '#3b4253' : '#ebe9f1',
+                'strokeWidth' => '97%'
+            ],
+            'dataLabels' => [
+                'show' => true,
+                'name' => [
+                    'fontSize' => '14px',
+                    'fontFamily' => 'Montserrat, sans-serif',
+                    'color' => $isDarkTheme ? '#b4b7bd' : '#6e6b7b'
+                ],
+                'value' => [
+                    'fontSize' => '16px',
+                    'fontFamily' => 'Montserrat, sans-serif',
+                    'color' => $isDarkTheme ? '#d0d2d6' : '#5e5873',
+                    'formatter' => 'function (val) { return val.toFixed(' . $decimals . ') + "%" }'
+                ]
+            ]
+        ];
+    } elseif ($type === 'heatmap') {
+        $baseOptions['plotOptions']['heatmap'] = [
+            'radius' => 2,
+            'enableShades' => true,
+            'shadeIntensity' => 0.5,
+            'colorScale' => [
+                'ranges' => [
+                    [
+                        'from' => 0,
+                        'to' => 20,
+                        'color' => $defaultColors[2], // Success color
+                        'name' => 'Low'
+                    ],
+                    [
+                        'from' => 21,
+                        'to' => 50,
+                        'color' => $defaultColors[3], // Warning color
+                        'name' => 'Medium'
+                    ],
+                    [
+                        'from' => 51,
+                        'to' => 100,
+                        'color' => $defaultColors[4], // Danger color
+                        'name' => 'High'
+                    ]
+                ]
+            ]
+        ];
+    }
+    
+    // Apply stacking if requested
+    if ($stacked && ($type === 'bar' || $type === 'area' || $type === 'line')) {
+        if ($type === 'bar') {
+            $baseOptions['plotOptions']['bar']['stacked'] = true;
+        } else {
+            $baseOptions['chart']['stacked'] = true;
+        }
+    }
+    
+    // Merge custom options
+    $chartOptions = json_encode(array_merge_recursive($baseOptions, $options));
+@endphp
+
+<div 
+    id="{{ $id }}-container" 
+    class="chart-container {{ $containerClass }}" 
+    style="width: {{ $width }}; min-height: {{ $height }};"
+    data-chart-id="{{ $id }}"
+    data-chart-type="{{ $type }}"
+    data-chart-theme="{{ $theme }}"
+    data-chart-responsive="{{ $responsive ? 'true' : 'false' }}"
+    role="region" 
+    aria-label="{{ $title ?? 'Chart: ' . $type }}"
+>
+    @if($loading)
+        <div class="chart-loading d-flex justify-content-center align-items-center h-100">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading chart...</span>
+            </div>
+        </div>
+    @endif
+    
+    <div 
+        id="{{ $id }}"
+        class="chart-element" 
+        style="width: 100%; height: 100%; min-height: {{ $height }};"
+        @if($isEmpty) aria-hidden="true" @endif
+    ></div>
+    
+    @if($isEmpty)
+        <div class="chart-empty-message text-center py-5">
+            <div class="empty-icon mb-2">
+                <i class="far fa-chart-bar fa-3x text-muted"></i>
+            </div>
+            <p class="text-muted">{{ $emptyMessage }}</p>
+        </div>
+    @endif
+    
+    @if($drilldown)
+        <div id="{{ $id }}-breadcrumb" class="chart-breadcrumb d-none mb-2">
+            <nav aria-label="Chart drill down navigation">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="#" class="drill-home" data-chart-id="{{ $id }}">Main</a>
+                    </li>
+                    <li id="{{ $id }}-drill-current" class="breadcrumb-item active"></li>
+                </ol>
+            </nav>
+        </div>
+    @endif
+</div>
+
+@once
+    @push('styles')
+    <style>
+        .chart-container {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+        
+        .chart-empty-message {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .chart-loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.7);
+            z-index: 2;
+        }
+        
+        .chart-breadcrumb {
+            margin-top: -15px;
+            margin-bottom: 10px !important;
+        }
+        
+        .dark-theme .chart-empty-message,
+        .dark-theme .chart-loading {
+            background-color: rgba(40, 48, 70, 0.7);
+        }
+        
+        .apexcharts-tooltip {
+            box-shadow: 0 5px 25px 0 rgba(0, 0, 0, 0.1);
+        }
+    </style>
+    @endpush
+
+    @push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize all charts
+            document.querySelectorAll('[data-chart-id]').forEach(function(container) {
+                const chartId = container.dataset.chartId;
+                initializeChart(chartId);
+            });
+            
+            // Initialize this specific chart
+            initializeChart('{{ $id }}');
+            
+            /**
+             * Initialize a chart with the given ID
+             * 
+             * @param {string} chartId - The ID of the chart to initialize
+             */
+            function initializeChart(chartId) {
+                // Skip if chart element doesn't exist
+                const chartElement = document.getElementById(chartId);
+                if (!chartElement) {
+                    console.warn('Chart element not found:', chartId);
+                    return;
+                }
+                
+                const container = document.getElementById(chartId + '-container');
+                const chartData = {!! $chartData !!};
+                const chartLabels = {!! $chartLabels !!};
+                const chartOptions = {!! $chartOptions !!};
+                
+                // Skip if data is empty
+                if (!chartData || (Array.isArray(chartData) && chartData.length === 0)) {
+                    console.warn('No data provided for chart:', chartId);
+                    
+                    // Remove loading state
+                    const loadingElement = container.querySelector('.chart-loading');
+                    if (loadingElement) {
+                        loadingElement.style.display = 'none';
+                    }
+                    
+                    // Show empty message
+                    const emptyElement = container.querySelector('.chart-empty-message');
+                    if (emptyElement) {
+                        emptyElement.style.display = 'flex';
+                    }
+                    
+                    return;
+                }
+                
+                // Prepare series data
+                let series = [];
+                
+                if (Array.isArray(chartData)) {
+                    if (typeof chartData[0] === 'object' && chartData[0] !== null) {
+                        // Data is already in series format
+                        series = chartData;
+                    } else {
+                        // Convert simple array to series
+                        series = [{
+                            name: '{{ $title ?? "Series" }}',
+                            data: chartData
+                        }];
+                    }
+                } else if (typeof chartData === 'object' && chartData !== null) {
+                    // Convert object to series array
+                    series = Object.keys(chartData).map(key => ({
+                        name: key,
+                        data: chartData[key]
+                    }));
+                }
+                
+                // Create chart instance
+                try {
+                    const chart = new ApexCharts(chartElement, {
+                        ...chartOptions,
+                        series: series
+                    });
+                    
+                    // Render chart
+                    chart.render().then(() => {
+                        // Remove loading state
+                        const loadingElement = container.querySelector('.chart-loading');
+                        if (loadingElement) {
+                            loadingElement.style.display = 'none';
+                        }
+                        
+                        // Store chart instance
+                        window[chartId + 'Chart'] = chart;
+                    });
+                    
+                    // Handle drill-down if enabled
+                    if ({{ $drilldown ? 'true' : 'false' }}) {
+                        setupDrilldown(chartId, chart, chartData);
+                    }
+                    
+                    // Set up responsiveness
+                    if ({{ $responsive ? 'true' : 'false' }}) {
+                        window.addEventListener('resize', function() {
+                            chart.updateOptions({
+                                chart: {
+                                    width: '100%'
+                                }
+                            });
+                        });
+                    }
+                } catch (error) {
+                    console.error('Failed to initialize chart:', error);
+                    
+                    // Show error message
+                    chartElement.innerHTML = '<div class="alert alert-danger">Failed to load chart: ' + error.message + '</div>';
+                    
+                    // Remove loading state
+                    const loadingElement = container.querySelector('.chart-loading');
+                    if (loadingElement) {
+                        loadingElement.style.display = 'none';
+                    }
+                }
+            }
+            
+            /**
+             * Set up drill-down functionality for a chart
+             * 
+             * @param {string} chartId - The ID of the chart
+             * @param {ApexCharts} chart - The ApexCharts instance
+             * @param {Array|Object} chartData - The chart data
+             */
+            function setupDrilldown(chartId, chart, chartData) {
+                // Skip if drilldown is not enabled
+                if (!{{ $drilldown ? 'true' : 'false' }}) return;
+                
+                // Store the original data
+                const originalData = JSON.parse(JSON.stringify(chartData));
+                const drillHistory = [];
+                
+                // Find elements
+                const container = document.getElementById(chartId + '-container');
+                const breadcrumb = document.getElementById(chartId + '-breadcrumb');
+                const currentLevel = document.getElementById(chartId + '-drill-current');
+                const homeLink = container.querySelector('.drill-home');
+                
+                // Handle chart click for drill-down
+                chart.addEventListener('dataPointSelection', function(event, chartContext, config) {
+                    const seriesIndex = config.seriesIndex;
+                    const dataPointIndex = config.dataPointIndex;
+                    
+                    // Get current series
+                    const series = chart.w.config.series;
+                    
+                    // Check if this series has drill-down data
+                    if (!series[seriesIndex] || !series[seriesIndex].data[dataPointIndex]) {
+                        return;
+                    }
+                    
+                    const dataPoint = series[seriesIndex].data[dataPointIndex];
+                    
+                    // Check if this data point has drill-down data
+                    if (!dataPoint.drilldown) {
+                        return;
+                    }
+                    
+                    // Get drill name
+                    const drillName = chart.w.globals.labels[dataPointIndex] || dataPoint.name || 'Detail';
+                    
+                    // Push current view to history
+                    drillHistory.push({
+                        name: currentLevel.innerText || 'Main',
+                        series: JSON.parse(JSON.stringify(series)),
+                        labels: chart.w.globals.labels
+                    });
+                    
+                    // Show breadcrumb
+                    if (breadcrumb) {
+                        breadcrumb.classList.remove('d-none');
+                        currentLevel.innerText = drillName;
+                    }
+                    
+                    // Update chart with new data
+                    chart.updateSeries(dataPoint.drilldown.series);
+                    
+                    // Update chart options if needed
+                    if (dataPoint.drilldown.options) {
+                        chart.updateOptions(dataPoint.drilldown.options);
+                    }
+                });
+                
+                // Handle home link click
+                if (homeLink) {
+                    homeLink.addEventListener('click', function(event) {
+                        event.preventDefault();
+                        
+                        // Clear history and reset to original data
+                        drillHistory.length = 0;
+                        
+                        // Hide breadcrumb
+                        if (breadcrumb) {
+                            breadcrumb.classList.add('d-none');
+                            currentLevel.innerText = '';
+                        }
+                        
+                        // Reset chart to original data
+                        chart.updateSeries(originalData);
+                    });
+                }
+                
+                // Handle back button logic
+                container.addEventListener('drill-back', function() {
+                    if (drillHistory.length === 0) return;
+                    
+                    const previousState = drillHistory.pop();
+                    
+                    // Update breadcrumb
+                    if (breadcrumb) {
+                        if (drillHistory.length === 0) {
+                            breadcrumb.classList.add('d-none');
+                            currentLevel.innerText = '';
+                        } else {
+                            currentLevel.innerText = previousState.name;
+                        }
+                    }
+                    
+                    // Update chart with previous data
+                    chart.updateSeries(previousState.series);
+                    
+                    // Update options if needed
+                    chart.updateOptions({
+                        xaxis: {
+                            categories: previousState.labels
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+    @endpush
+@endonce

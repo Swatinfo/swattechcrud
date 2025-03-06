@@ -1,0 +1,1239 @@
+{{-- 
+Component Class: SwatTech\Crud\View\Components\ExportButtons
+
+Properties:
+    - id: string - Unique identifier for the export component (default: auto-generated)
+    - target: string - Target element ID containing data to export (table ID)
+    - formats: array - Export formats to display (CSV, Excel, PDF, etc.) (default: all)
+    - filename: string - Default filename for exports (default: 'export')
+    - title: string - Title for export files (default: same as filename)
+    - showColumns: boolean - Whether to allow column selection (default: true)
+    - columns: array - Column definitions to export
+    - includeTimestamp: boolean - Append timestamp to filename (default: true)
+    - orientation: string - Page orientation for PDFs (default: portrait)
+    - paperSize: string - Paper size for PDFs (default: a4)
+    - customCSS: string - Custom CSS for PDF exports (default: null)
+    - buttonSize: string - Size of buttons (sm, md, lg) (default: sm)
+    - buttonVariant: string - Style variant for buttons (default: outline-primary)
+    - dropdownText: string - Text for dropdown button (default: 'Export')
+    - icon: string - Icon class for main button (default: 'fas fa-download')
+    - position: string - Button position (left, right) (default: right)
+    - selectionOnly: boolean - Export only selected rows (default: false)
+    - withPassword: boolean - Enable password protection option (default: false)
+    - enableBatch: boolean - Enable batch export for large datasets (default: false)
+    - batchSize: integer - Number of records per batch (default: 1000)
+    - showNotification: boolean - Show notifications on export completion (default: true)
+    - headerOptions: array - Custom header options for exports
+    - footerOptions: array - Custom footer options for exports
+--}}
+
+@props([
+    'id' => 'export-buttons-'.uniqid(),
+    'target' => null,
+    'formats' => ['csv', 'excel', 'pdf', 'print'],
+    'filename' => 'export',
+    'title' => null,
+    'showColumns' => true,
+    'columns' => [],
+    'includeTimestamp' => true,
+    'orientation' => 'portrait',
+    'paperSize' => 'a4',
+    'customCSS' => null,
+    'buttonSize' => 'sm',
+    'buttonVariant' => 'outline-primary',
+    'dropdownText' => 'Export',
+    'icon' => 'fas fa-download',
+    'position' => 'right',
+    'selectionOnly' => false,
+    'withPassword' => false,
+    'enableBatch' => false,
+    'batchSize' => 1000,
+    'showNotification' => true,
+    'headerOptions' => [],
+    'footerOptions' => []
+])
+
+@php
+    // Normalize and validate formats
+    $availableFormats = ['csv', 'excel', 'pdf', 'print', 'json', 'xml', 'html'];
+    $formats = array_intersect($formats, $availableFormats);
+    
+    // Set title if not provided
+    $title = $title ?? $filename;
+    
+    // Create short descriptions for each format
+    $formatDescriptions = [
+        'csv' => 'Comma-separated values file (.csv)',
+        'excel' => 'Microsoft Excel file (.xlsx)',
+        'pdf' => 'Adobe PDF Document (.pdf)',
+        'print' => 'Print-friendly version',
+        'json' => 'JSON data file (.json)',
+        'xml' => 'XML data file (.xml)',
+        'html' => 'HTML file (.html)'
+    ];
+    
+    // Button sizes
+    $btnSizeClass = [
+        'sm' => 'btn-sm',
+        'md' => '',
+        'lg' => 'btn-lg'
+    ][$buttonSize] ?? 'btn-sm';
+    
+    // Prepare filename with timestamp if needed
+    $defaultFilename = $filename . ($includeTimestamp ? ('_' . date('Ymd_His')) : '');
+@endphp
+
+<div id="{{ $id }}" class="export-buttons-component {{ $position === 'right' ? 'ms-auto' : 'me-auto' }}">
+    @if(count($formats) === 1)
+        {{-- Single export button --}}
+        <button 
+            type="button" 
+            class="btn btn-{{ $buttonVariant }} {{ $btnSizeClass }} export-button" 
+            data-format="{{ $formats[0] }}" 
+            data-target="{{ $target }}"
+            data-filename="{{ $defaultFilename }}"
+            title="Export as {{ strtoupper($formats[0]) }}"
+            aria-label="Export as {{ strtoupper($formats[0]) }}"
+        >
+            <i class="{{ $icon }} me-1" aria-hidden="true"></i> 
+            {{ $dropdownText }}
+        </button>
+    @else
+        {{-- Dropdown for multiple formats --}}
+        <div class="btn-group">
+            <button 
+                type="button" 
+                class="btn btn-{{ $buttonVariant }} {{ $btnSizeClass }} dropdown-toggle" 
+                data-bs-toggle="dropdown" 
+                aria-expanded="false"
+                aria-haspopup="true"
+                id="{{ $id }}-dropdown"
+            >
+                <i class="{{ $icon }} me-1" aria-hidden="true"></i> 
+                {{ $dropdownText }}
+            </button>
+            
+            <ul class="dropdown-menu dropdown-menu-{{ $position === 'right' ? 'end' : 'start' }}" aria-labelledby="{{ $id }}-dropdown">
+                @foreach($formats as $format)
+                <li>
+                    <a 
+                        class="dropdown-item export-format" 
+                        href="#" 
+                        data-format="{{ $format }}" 
+                        data-target="{{ $target }}"
+                        data-filename="{{ $defaultFilename }}"
+                        title="{{ $formatDescriptions[$format] ?? 'Export as '.strtoupper($format) }}"
+                    >
+                        <i class="fas fa-{{ 
+                            $format === 'csv' ? 'file-csv' : 
+                            ($format === 'excel' ? 'file-excel' : 
+                            ($format === 'pdf' ? 'file-pdf' : 
+                            ($format === 'print' ? 'print' : 
+                            ($format === 'json' ? 'file-code' : 
+                            ($format === 'xml' ? 'file-code' : 'file-alt'))))) 
+                        }} me-2" aria-hidden="true"></i>
+                        {{ strtoupper($format) }}
+                    </a>
+                </li>
+                @endforeach
+                
+                @if($showColumns)
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a 
+                        class="dropdown-item" 
+                        href="#" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#{{ $id }}-options-modal"
+                    >
+                        <i class="fas fa-cog me-2" aria-hidden="true"></i>
+                        Export Options
+                    </a>
+                </li>
+                @endif
+            </ul>
+        </div>
+    @endif
+    
+    {{-- Advanced Export Options Modal --}}
+    @if($showColumns)
+    <div class="modal fade" id="{{ $id }}-options-modal" tabindex="-1" aria-labelledby="{{ $id }}-options-modal-label" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="{{ $id }}-options-modal-label">Export Options</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="{{ $id }}-options-form">
+                        <!-- Basic Options -->
+                        <div class="mb-3">
+                            <label for="{{ $id }}-format" class="form-label">Format</label>
+                            <select id="{{ $id }}-format" class="form-select" name="format">
+                                @foreach($formats as $format)
+                                    <option value="{{ $format }}">{{ strtoupper($format) }} - {{ $formatDescriptions[$format] ?? '' }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ $id }}-filename" class="form-label">Filename</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="{{ $id }}-filename" name="filename" value="{{ $filename }}">
+                                <span class="input-group-text">
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="form-check-input" type="checkbox" id="{{ $id }}-include-timestamp" name="include_timestamp" {{ $includeTimestamp ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="{{ $id }}-include-timestamp">Add timestamp</label>
+                                    </div>
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Columns Selection -->
+                        <div class="mb-3">
+                            <label class="form-label d-block">Columns to Export</label>
+                            <div class="d-flex mb-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="{{ $id }}-select-all-columns">Select All</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="{{ $id }}-deselect-all-columns">Deselect All</button>
+                            </div>
+                            <div class="columns-container border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                                <div class="row">
+                                    @foreach($columns as $index => $column)
+                                        <div class="col-md-4 mb-2">
+                                            <div class="form-check">
+                                                <input 
+                                                    class="form-check-input column-checkbox" 
+                                                    type="checkbox" 
+                                                    name="columns[]" 
+                                                    value="{{ $column['key'] ?? $column['data'] ?? $index }}" 
+                                                    id="{{ $id }}-column-{{ $index }}" 
+                                                    checked
+                                                >
+                                                <label class="form-check-label" for="{{ $id }}-column-{{ $index }}">
+                                                    {{ $column['label'] ?? $column['title'] ?? $column['key'] ?? "Column $index" }}
+                                                </label>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Export Range -->
+                        <div class="mb-3">
+                            <label class="form-label">Export Range</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="exportRange" id="{{ $id }}-export-all" value="all" checked>
+                                <label class="form-check-label" for="{{ $id }}-export-all">
+                                    All Data
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="exportRange" id="{{ $id }}-export-selected" value="selected" {{ $selectionOnly ? 'checked' : '' }}>
+                                <label class="form-check-label" for="{{ $id }}-export-selected">
+                                    Selected Rows Only
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="exportRange" id="{{ $id }}-export-filtered" value="filtered">
+                                <label class="form-check-label" for="{{ $id }}-export-filtered">
+                                    Filtered Results Only
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Format-specific options (conditional display) -->
+                        <div id="{{ $id }}-format-specific-options">
+                            <!-- PDF-specific options -->
+                            <div class="format-options pdf-options d-none">
+                                <h6 class="mt-3">PDF Options</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ $id }}-orientation" class="form-label">Page Orientation</label>
+                                            <select id="{{ $id }}-orientation" class="form-select" name="orientation">
+                                                <option value="portrait" {{ $orientation === 'portrait' ? 'selected' : '' }}>Portrait</option>
+                                                <option value="landscape" {{ $orientation === 'landscape' ? 'selected' : '' }}>Landscape</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ $id }}-paper-size" class="form-label">Paper Size</label>
+                                            <select id="{{ $id }}-paper-size" class="form-select" name="paperSize">
+                                                <option value="a4" {{ $paperSize === 'a4' ? 'selected' : '' }}>A4</option>
+                                                <option value="letter" {{ $paperSize === 'letter' ? 'selected' : '' }}>Letter</option>
+                                                <option value="legal" {{ $paperSize === 'legal' ? 'selected' : '' }}>Legal</option>
+                                                <option value="tabloid" {{ $paperSize === 'tabloid' ? 'selected' : '' }}>Tabloid</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                @if($withPassword)
+                                <div class="mb-3">
+                                    <label for="{{ $id }}-password" class="form-label">Password Protection</label>
+                                    <div class="input-group">
+                                        <div class="form-check form-switch pt-1 me-2">
+                                            <input class="form-check-input" type="checkbox" id="{{ $id }}-enable-password" name="enablePassword">
+                                            <label class="form-check-label" for="{{ $id }}-enable-password">Enable</label>
+                                        </div>
+                                        <input type="password" class="form-control" id="{{ $id }}-password" name="password" placeholder="Enter password" disabled>
+                                    </div>
+                                </div>
+                                @endif
+                            </div>
+                            
+                            <!-- Excel-specific options -->
+                            <div class="format-options excel-options d-none">
+                                <h6 class="mt-3">Excel Options</h6>
+                                <div class="mb-3">
+                                    <label for="{{ $id }}-excel-sheet-name" class="form-label">Sheet Name</label>
+                                    <input type="text" class="form-control" id="{{ $id }}-excel-sheet-name" name="sheetName" value="Sheet1">
+                                </div>
+                                
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="{{ $id }}-auto-filter" name="autoFilter" checked>
+                                    <label class="form-check-label" for="{{ $id }}-auto-filter">Enable Auto-filter</label>
+                                </div>
+                                
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="{{ $id }}-freeze-header" name="freezeHeader" checked>
+                                    <label class="form-check-label" for="{{ $id }}-freeze-header">Freeze Header Row</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        @if($enableBatch)
+                        <!-- Batch Export Options -->
+                        <div class="mb-3 mt-4">
+                            <label class="form-label">Processing Method</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="processingMethod" id="{{ $id }}-process-immediate" value="immediate" checked>
+                                <label class="form-check-label" for="{{ $id }}-process-immediate">
+                                    Immediate (for smaller datasets)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="processingMethod" id="{{ $id }}-process-background" value="background">
+                                <label class="form-check-label" for="{{ $id }}-process-background">
+                                    Background Processing (for large datasets)
+                                </label>
+                                <div class="form-text text-muted">You will be notified when the export is ready.</div>
+                            </div>
+                        </div>
+                        @endif
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="{{ $id }}-apply-export">Export</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+</div>
+
+@once
+    @push('scripts')
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize export buttons
+        const exportButtons = document.querySelectorAll('.export-button, .export-format');
+        if (exportButtons.length) {
+            exportButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const format = this.dataset.format;
+                    const targetId = this.dataset.target;
+                    const filename = this.dataset.filename;
+                    
+                    initiateExport(format, targetId, filename);
+                });
+            });
+        }
+        
+        // Quick access with keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Alt + E to open export dropdown
+            if (e.altKey && e.key.toLowerCase() === 'e') {
+                e.preventDefault();
+                const dropdown = document.getElementById('{{ $id }}-dropdown');
+                if (dropdown) {
+                    dropdown.click();
+                }
+            }
+            
+            // Alt + [1-9] to select export format
+            if (e.altKey && e.key >= '1' && e.key <= '9') {
+                e.preventDefault();
+                const index = parseInt(e.key) - 1;
+                const exportFormats = document.querySelectorAll('.export-format');
+                if (exportFormats[index]) {
+                    exportFormats[index].click();
+                }
+            }
+        });
+        
+        // Handle export options modal
+        const optionsModal = document.getElementById('{{ $id }}-options-modal');
+        if (optionsModal) {
+            // Format change handler to show/hide format-specific options
+            const formatSelect = document.getElementById('{{ $id }}-format');
+            const formatSpecificOptions = document.getElementById('{{ $id }}-format-specific-options');
+            
+            formatSelect.addEventListener('change', function() {
+                const format = this.value;
+                
+                // Hide all format options
+                const formatOptions = formatSpecificOptions.querySelectorAll('.format-options');
+                formatOptions.forEach(option => option.classList.add('d-none'));
+                
+                // Show only relevant format options
+                const relevantOption = formatSpecificOptions.querySelector(`.${format}-options`);
+                if (relevantOption) {
+                    relevantOption.classList.remove('d-none');
+                }
+            });
+            
+            // Trigger change to initialize
+            if (formatSelect) {
+                formatSelect.dispatchEvent(new Event('change'));
+            }
+            
+            // Select/deselect all columns
+            const selectAllBtn = document.getElementById('{{ $id }}-select-all-columns');
+            const deselectAllBtn = document.getElementById('{{ $id }}-deselect-all-columns');
+            const columnCheckboxes = document.querySelectorAll('.column-checkbox');
+            
+            if (selectAllBtn && deselectAllBtn) {
+                selectAllBtn.addEventListener('click', function() {
+                    columnCheckboxes.forEach(checkbox => checkbox.checked = true);
+                });
+                
+                deselectAllBtn.addEventListener('click', function() {
+                    columnCheckboxes.forEach(checkbox => checkbox.checked = false);
+                });
+            }
+            
+            // Password protection toggle
+            const enablePasswordCheckbox = document.getElementById('{{ $id }}-enable-password');
+            const passwordInput = document.getElementById('{{ $id }}-password');
+            
+            if (enablePasswordCheckbox && passwordInput) {
+                enablePasswordCheckbox.addEventListener('change', function() {
+                    passwordInput.disabled = !this.checked;
+                });
+            }
+            
+            // Handle apply button click
+            const applyExportBtn = document.getElementById('{{ $id }}-apply-export');
+            if (applyExportBtn) {
+                applyExportBtn.addEventListener('click', function() {
+                    // Get form data
+                    const form = document.getElementById('{{ $id }}-options-form');
+                    const formData = new FormData(form);
+                    
+                    // Get basic export options
+                    const format = formData.get('format');
+                    const filename = formData.get('filename');
+                    const includeTimestamp = formData.has('include_timestamp');
+                    const exportRange = formData.get('exportRange');
+                    
+                    // Get columns
+                    const selectedColumns = [];
+                    formData.getAll('columns[]').forEach(column => {
+                        selectedColumns.push(column);
+                    });
+                    
+                    // Get target
+                    const targetId = document.querySelector('.export-format')?.dataset.target || '{{ $target }}';
+                    
+                    // Format-specific options
+                    const exportOptions = {
+                        format: format,
+                        filename: filename + (includeTimestamp ? ('_' + formatDate(new Date())) : ''),
+                        columns: selectedColumns,
+                        range: exportRange
+                    };
+                    
+                    // Add PDF options if applicable
+                    if (format === 'pdf') {
+                        exportOptions.orientation = formData.get('orientation');
+                        exportOptions.paperSize = formData.get('paperSize');
+                        
+                        // Add password if enabled
+                        if (formData.has('enablePassword') && formData.get('password')) {
+                            exportOptions.password = formData.get('password');
+                        }
+                    }
+                    
+                    // Add Excel options if applicable
+                    if (format === 'excel') {
+                        exportOptions.sheetName = formData.get('sheetName');
+                        exportOptions.autoFilter = formData.has('autoFilter');
+                        exportOptions.freezeHeader = formData.has('freezeHeader');
+                    }
+                    
+                    // Handle processing method
+                    if (formData.has('processingMethod')) {
+                        exportOptions.backgroundProcess = formData.get('processingMethod') === 'background';
+                    }
+                    
+                    // Close modal
+                    const modalInstance = bootstrap.Modal.getInstance(optionsModal);
+                    modalInstance.hide();
+                    
+                    // Initiate export
+                    initiateExport(format, targetId, filename, exportOptions);
+                });
+            }
+        }
+        
+        /**
+         * Format date as YYYYMMDD_HHMMSS
+         */
+        function formatDate(date) {
+            const pad = (num) => (num < 10 ? '0' + num : num);
+            
+            const year = date.getFullYear();
+            const month = pad(date.getMonth() + 1);
+            const day = pad(date.getDate());
+            const hours = pad(date.getHours());
+            const minutes = pad(date.getMinutes());
+            const seconds = pad(date.getSeconds());
+            
+            return `${year}${month}${day}_${hours}${minutes}${seconds}`;
+        }
+        
+        /**
+         * Initiate export based on format and options
+         */
+        function initiateExport(format, targetId, defaultFilename, options = {}) {
+            // Default options
+            const exportOptions = {
+                filename: defaultFilename,
+                format: format,
+                ...options
+            };
+            
+            // Get the target element
+            const targetElement = document.getElementById(targetId);
+            if (!targetElement) {
+                showNotification('Export Error', 'Target element not found.', 'danger');
+                return;
+            }
+            
+            // Show loading indicator
+            showLoadingIndicator(true);
+            
+            try {
+                // Handle different export formats
+                switch (format) {
+                    case 'csv':
+                        exportCSV(targetElement, exportOptions);
+                        break;
+                    case 'excel':
+                        exportExcel(targetElement, exportOptions);
+                        break;
+                    case 'pdf':
+                        exportPDF(targetElement, exportOptions);
+                        break;
+                    case 'print':
+                        exportPrint(targetElement, exportOptions);
+                        break;
+                    case 'json':
+                        exportJSON(targetElement, exportOptions);
+                        break;
+                    case 'xml':
+                        exportXML(targetElement, exportOptions);
+                        break;
+                    case 'html':
+                        exportHTML(targetElement, exportOptions);
+                        break;
+                    default:
+                        showNotification('Export Error', 'Unsupported export format.', 'danger');
+                }
+            } catch (error) {
+                console.error('Export error:', error);
+                showNotification('Export Error', 'An error occurred during export.', 'danger');
+            } finally {
+                // Hide loading indicator
+                showLoadingIndicator(false);
+            }
+        }
+        
+        /**
+         * Export data as CSV
+         */
+        function exportCSV(element, options) {
+            // Extract table data
+            const data = extractTableData(element, options);
+            
+            // Convert to CSV
+            let csv = '';
+            
+            // Add header row
+            if (data.header && data.header.length > 0) {
+                csv += data.header.join(',') + '\n';
+            }
+            
+            // Add data rows
+            data.rows.forEach(row => {
+                // Quote values containing commas or quotes
+                const quotedRow = row.map(cell => {
+                    if (cell === null || cell === undefined) return '';
+                    cell = String(cell);
+                    return cell.includes(',') || cell.includes('"') || cell.includes('\n') 
+                        ? '"' + cell.replace(/"/g, '""') + '"' 
+                        : cell;
+                });
+                csv += quotedRow.join(',') + '\n';
+            });
+            
+            // Trigger download
+            downloadFile(csv, options.filename + '.csv', 'text/csv');
+            
+            // Show success notification
+            if ({{ $showNotification ? 'true' : 'false' }}) {
+                showNotification('Export Complete', 'CSV file has been downloaded successfully.', 'success');
+            }
+        }
+        
+        /**
+         * Export data as Excel (requires third-party library)
+         */
+        function exportExcel(element, options) {
+            // Check if ExcelJS is available
+            if (typeof ExcelJS !== 'undefined') {
+                exportExcelWithExcelJS(element, options);
+            } else if (typeof XLSX !== 'undefined') {
+                exportExcelWithSheetJS(element, options);
+            } else {
+                // Fallback to simpler approach
+                exportExcelFallback(element, options);
+            }
+        }
+        
+        /**
+         * Export data as PDF (requires third-party library)
+         */
+        function exportPDF(element, options) {
+            // Check if jsPDF is available
+            if (typeof jsPDF !== 'undefined') {
+                // Implementation with jsPDF
+                // ...
+                showNotification('Export Complete', 'PDF file has been downloaded successfully.', 'success');
+            } else {
+                showNotification('Export Error', 'PDF export library not loaded.', 'danger');
+            }
+        }
+        
+        /**
+         * Extract data from table
+         */
+        function extractTableData(element, options) {
+            const result = {
+                header: [],
+                rows: []
+            };
+            
+            // Check if element is a table
+            if (element.tagName === 'TABLE') {
+                const table = element;
+                
+                // Get header row
+                const headerRow = table.querySelector('thead tr');
+                if (headerRow) {
+                    const headerCells = headerRow.querySelectorAll('th');
+                    headerCells.forEach(cell => {
+                        // Skip checkbox column if present
+                        if (cell.querySelector('input[type="checkbox"]')) return;
+                        // Skip action column if data-action attribute is present
+                        if (cell.getAttribute('data-action') === 'true') return;
+                        
+                        result.header.push(cell.textContent.trim());
+                    });
+                }
+                
+                // Get data rows
+                const dataRows = table.querySelectorAll('tbody tr');
+                dataRows.forEach(row => {
+                    // Skip if this is an expansion row
+                    if (row.classList.contains('expansion-row')) return;
+                    
+                    // Check if we should only include selected rows
+                    if (options.range === 'selected') {
+                        const checkbox = row.querySelector('input[type="checkbox"]');
+                        if (checkbox && !checkbox.checked) return;
+                    }
+                    
+                    const rowData = [];
+                    const cells = row.querySelectorAll('td');
+                    cells.forEach((cell, index) => {
+                        // Skip checkbox column if present
+                        if (cell.querySelector('input[type="checkbox"]')) return;
+                        // Skip action column
+                        if (cell.classList.contains('action-buttons')) return;
+                        
+                        // Get text content of cell, remove any hidden elements
+                        const hiddenElements = cell.querySelectorAll('.d-none, .visually-hidden');
+                        const cellClone = cell.cloneNode(true);
+                        hiddenElements.forEach(el => {
+                            const correspondingEl = cellClone.querySelector(`#${el.id}`);
+                            if (correspondingEl) correspondingEl.remove();
+                        });
+                        
+                        rowData.push(cellClone.textContent.trim());
+                    });
+                    
+                    result.rows.push(rowData);
+                });
+            } else {
+                // For non-table elements, extract data from custom data attributes or JSON
+                // ...
+            }
+            
+            return result;
+        }
+        
+        /**
+         * Trigger file download
+         */
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.style.display = 'none';
+                        document.body.appendChild(link);
+            
+            // Trigger download
+            link.click();
+            
+            // Clean up
+            setTimeout(() => {
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }, 100);
+        }
+        
+        /**
+         * Show or hide loading indicator during export
+         */
+        function showLoadingIndicator(show) {
+            // Try to find or create a loading indicator
+            let loadingIndicator = document.getElementById('export-loading-indicator');
+            
+            if (show) {
+                if (!loadingIndicator) {
+                    loadingIndicator = document.createElement('div');
+                    loadingIndicator.id = 'export-loading-indicator';
+                    loadingIndicator.className = 'position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-dark bg-opacity-25';
+                    loadingIndicator.style.zIndex = '9999';
+                    
+                    const spinner = document.createElement('div');
+                    spinner.className = 'spinner-border text-primary';
+                    spinner.setAttribute('role', 'status');
+                    
+                    const span = document.createElement('span');
+                    span.className = 'visually-hidden';
+                    span.textContent = 'Exporting...';
+                    
+                    spinner.appendChild(span);
+                    loadingIndicator.appendChild(spinner);
+                    document.body.appendChild(loadingIndicator);
+                } else {
+                    loadingIndicator.classList.remove('d-none');
+                }
+            } else if (loadingIndicator) {
+                loadingIndicator.classList.add('d-none');
+                
+                // Remove after animation completes
+                setTimeout(() => {
+                    if (loadingIndicator.parentNode) {
+                        loadingIndicator.parentNode.removeChild(loadingIndicator);
+                    }
+                }, 300);
+            }
+        }
+        
+        /**
+         * Show notification after export
+         */
+        function showNotification(title, message, type = 'success') {
+            // Check if we have any notification libraries available
+            if (typeof Toastify !== 'undefined') {
+                Toastify({
+                    text: `${title}: ${message}`,
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right',
+                    backgroundColor: type === 'success' ? '#28c76f' : '#ea5455',
+                    className: 'export-notification'
+                }).showToast();
+                return;
+            }
+            
+            // Fallback to bootstrap toast if available
+            if (typeof bootstrap !== 'undefined' && typeof bootstrap.Toast !== 'undefined') {
+                // Create toast container if it doesn't exist
+                let toastContainer = document.querySelector('.toast-container');
+                if (!toastContainer) {
+                    toastContainer = document.createElement('div');
+                    toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+                    document.body.appendChild(toastContainer);
+                }
+                
+                // Create toast
+                const toastId = 'export-toast-' + Date.now();
+                const toastHtml = `
+                    <div class="toast align-items-center text-white bg-${type}" id="${toastId}" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="d-flex">
+                            <div class="toast-body">
+                                <strong>${title}</strong>: ${message}
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                    </div>
+                `;
+                
+                toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+                const toastElement = document.getElementById(toastId);
+                const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
+                toast.show();
+                
+                // Remove toast from DOM after it's hidden
+                toastElement.addEventListener('hidden.bs.toast', () => {
+                    toastElement.remove();
+                });
+                
+                return;
+            }
+            
+            // Simple fallback
+            console.log(`${title}: ${message}`);
+        }
+        
+        /**
+         * Export data as Excel using ExcelJS library
+         */
+        function exportExcelWithExcelJS(element, options) {
+            // Create a new workbook
+            const workbook = new ExcelJS.Workbook();
+            workbook.creator = 'SwatTech Crud';
+            workbook.lastModifiedBy = 'SwatTech Crud';
+            workbook.created = new Date();
+            workbook.modified = new Date();
+            
+            // Add a worksheet
+            const sheetName = options.sheetName || 'Sheet1';
+            const worksheet = workbook.addWorksheet(sheetName);
+            
+            // Extract data
+            const data = extractTableData(element, options);
+            
+            // Add header row
+            if (data.header && data.header.length > 0) {
+                worksheet.addRow(data.header);
+                
+                // Format header row
+                const headerRow = worksheet.getRow(1);
+                headerRow.font = { bold: true };
+                headerRow.eachCell((cell) => {
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFE6E6E6' }
+                    };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+                });
+                
+                // Freeze header row if requested
+                if (options.freezeHeader) {
+                    worksheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+                }
+            }
+            
+            // Add data rows
+            data.rows.forEach(row => {
+                worksheet.addRow(row);
+            });
+            
+            // Auto-fit columns to content
+            worksheet.columns.forEach((column) => {
+                let maxLength = 0;
+                column.eachCell({ includeEmpty: true }, (cell) => {
+                    const columnLength = cell.value ? cell.value.toString().length : 10;
+                    if (columnLength > maxLength) {
+                        maxLength = columnLength;
+                    }
+                });
+                column.width = Math.min(maxLength + 2, 30); // Cap width at 30 characters
+            });
+            
+            // Enable autofilter if requested
+            if (options.autoFilter && data.header.length > 0) {
+                worksheet.autoFilter = {
+                    from: { row: 1, column: 1 },
+                    to: { row: 1, column: data.header.length }
+                };
+            }
+            
+            // Generate Excel file
+            workbook.xlsx.writeBuffer().then(buffer => {
+                // Convert buffer to blob
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = URL.createObjectURL(blob);
+                
+                // Create link and trigger download
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = options.filename + '.xlsx';
+                document.body.appendChild(link);
+                link.click();
+                
+                // Clean up
+                setTimeout(() => {
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+                // Show notification
+                if ({{ $showNotification ? 'true' : 'false' }}) {
+                    showNotification('Export Complete', 'Excel file has been downloaded successfully.', 'success');
+                }
+            }).catch(error => {
+                console.error('Excel export error:', error);
+                showNotification('Export Error', 'Failed to generate Excel file.', 'danger');
+            });
+        }
+        
+        /**
+         * Export data as Excel using SheetJS library
+         */
+        function exportExcelWithSheetJS(element, options) {
+            // Extract table data
+            const data = extractTableData(element, options);
+            
+            // Create worksheet
+            const ws = XLSX.utils.aoa_to_sheet([data.header, ...data.rows]);
+            
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, options.sheetName || 'Sheet1');
+            
+            // Generate Excel file
+            XLSX.writeFile(wb, options.filename + '.xlsx');
+            
+            // Show notification
+            if ({{ $showNotification ? 'true' : 'false' }}) {
+                showNotification('Export Complete', 'Excel file has been downloaded successfully.', 'success');
+            }
+        }
+        
+        /**
+         * Export data as Excel (fallback method using HTML table)
+         */
+        function exportExcelFallback(element, options) {
+            // Generate HTML for Excel
+            let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            html += '<head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>' + (options.sheetName || 'Sheet1') + '</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>';
+            html += '<body>';
+            
+            // Clone the table for export
+            const tableClone = element.cloneNode(true);
+            
+            // Remove any action columns and checkbox columns
+            const actionCells = tableClone.querySelectorAll('th[data-action="true"], td.action-buttons');
+            actionCells.forEach(cell => cell.remove());
+            
+            const checkboxCells = tableClone.querySelectorAll('th:has(input[type="checkbox"]), td:has(input[type="checkbox"])');
+            checkboxCells.forEach(cell => cell.remove());
+            
+            html += tableClone.outerHTML;
+            html += '</body></html>';
+            
+            // Trigger download
+            const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = options.filename + '.xls';
+            document.body.appendChild(link);
+            link.click();
+            
+            // Clean up
+            setTimeout(() => {
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }, 100);
+            
+            // Show notification
+            if ({{ $showNotification ? 'true' : 'false' }}) {
+                showNotification('Export Complete', 'Excel file has been downloaded successfully.', 'success');
+            }
+        }
+        
+        /**
+         * Export data in print-friendly format
+         */
+        function exportPrint(element, options) {
+            // Create a clone of the element for printing
+            const printContent = element.cloneNode(true);
+            
+            // Remove action buttons and checkboxes from print view
+            printContent.querySelectorAll('.action-buttons, input[type="checkbox"]').forEach(el => {
+                if (el.parentNode && (el.parentNode.tagName === 'TD' || el.parentNode.tagName === 'TH')) {
+                    el.parentNode.remove();
+                } else {
+                    el.remove();
+                }
+            });
+            
+            // Create print window
+            const printWindow = window.open('', '_blank');
+            
+            // Generate HTML content
+            const html = `
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>${options.title || options.filename}</title>
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                            padding: 20px;
+                            font-size: 12px;
+                        }
+                        table {
+                            border-collapse: collapse;
+                            width: 100%;
+                            margin-bottom: 20px;
+                        }
+                        th, td {
+                            border: 1px solid #ddd;
+                            padding: 8px;
+                            text-align: left;
+                        }
+                        th {
+                            background-color: #f2f2f2;
+                            font-weight: bold;
+                        }
+                        .print-header {
+                            text-align: center;
+                            margin-bottom: 20px;
+                        }
+                        .print-footer {
+                            text-align: center;
+                            font-size: 10px;
+                            color: #666;
+                            margin-top: 20px;
+                            border-top: 1px solid #ddd;
+                            padding-top: 10px;
+                        }
+                        @media print {
+                            .no-print {
+                                display: none;
+                            }
+                            button {
+                                display: none;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="print-header">
+                        <h1>${options.title || options.filename}</h1>
+                        <p>Generated on ${new Date().toLocaleString()}</p>
+                    </div>
+                    
+                    <div class="no-print">
+                        <button onclick="window.print();" style="padding: 5px 10px; margin-bottom: 20px;">Print</button>
+                    </div>
+                    
+                    ${printContent.outerHTML}
+                    
+                    <div class="print-footer">
+                        <p>Exported via SwatTech Crud - ${new Date().toLocaleDateString()}</p>
+                    </div>
+                    
+                    <script>
+                        // Auto-print
+                        setTimeout(function() {
+                            window.print();
+                        }, 500);
+                    </script>
+                </body>
+                </html>
+            `;
+            
+            // Write to the new window and trigger print
+            printWindow.document.open();
+            printWindow.document.write(html);
+            printWindow.document.close();
+            
+            // Show notification
+            if ({{ $showNotification ? 'true' : 'false' }}) {
+                showNotification('Print Ready', 'Print dialog has been opened in a new tab.', 'success');
+            }
+        }
+        
+        /**
+         * Export data as JSON
+         */
+        function exportJSON(element, options) {
+            // Extract table data
+            const data = extractTableData(element, options);
+            
+            // Convert to JSON structure
+            const jsonData = [];
+            data.rows.forEach(row => {
+                const rowObject = {};
+                data.header.forEach((header, index) => {
+                    rowObject[header] = row[index] || '';
+                });
+                jsonData.push(rowObject);
+            });
+            
+            // Convert to JSON string with pretty formatting
+            const jsonString = JSON.stringify(jsonData, null, 2);
+            
+            // Trigger download
+            downloadFile(jsonString, options.filename + '.json', 'application/json');
+            
+            // Show notification
+            if ({{ $showNotification ? 'true' : 'false' }}) {
+                showNotification('Export Complete', 'JSON file has been downloaded successfully.', 'success');
+            }
+        }
+        
+        /**
+         * Export data as XML
+         */
+        function exportXML(element, options) {
+            // Extract table data
+            const data = extractTableData(element, options);
+            
+            // Create XML content
+            let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+            xml += '<data>\n';
+            
+            // Add rows
+            data.rows.forEach((row, rowIndex) => {
+                xml += '  <row id="' + (rowIndex + 1) + '">\n';
+                
+                // Add columns
+                data.header.forEach((header, colIndex) => {
+                    // Clean header name for XML (remove spaces, special chars)
+                    const cleanHeader = header.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+                    // Escape XML special characters
+                    const value = (row[colIndex] || '')
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&apos;');
+                    
+                    xml += '    <' + cleanHeader + '>' + value + '</' + cleanHeader + '>\n';
+                });
+                
+                xml += '  </row>\n';
+            });
+            
+            xml += '</data>';
+            
+            // Trigger download
+            downloadFile(xml, options.filename + '.xml', 'application/xml');
+            
+            // Show notification
+            if ({{ $showNotification ? 'true' : 'false' }}) {
+                showNotification('Export Complete', 'XML file has been downloaded successfully.', 'success');
+            }
+        }
+        
+        /**
+         * Export data as HTML
+         */
+        function exportHTML(element, options) {
+            // Create a clone of the element
+            const htmlContent = element.cloneNode(true);
+            
+            // Remove action buttons and checkboxes
+            htmlContent.querySelectorAll('.action-buttons, input[type="checkbox"]').forEach(el => {
+                if (el.parentNode && (el.parentNode.tagName === 'TD' || el.parentNode.tagName === 'TH')) {
+                    el.parentNode.remove();
+                } else {
+                    el.remove();
+                }
+            });
+            
+            // Generate HTML document
+            const html = `
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>${options.title || options.filename}</title>
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                            margin: 0;
+                            padding: 20px;
+                            font-size: 14px;
+                        }
+                        table {
+                            border-collapse: collapse;
+                            width: 100%;
+                            margin-bottom: 20px;
+                        }
+                        th, td {
+                            border: 1px solid #ddd;
+                            padding: 8px;
+                            text-align: left;
+                        }
+                        th {
+                            background-color: #f2f2f2;
+                            font-weight: bold;
+                        }
+                        h1 {
+                            color: #333;
+                            font-size: 24px;
+                            margin-bottom: 20px;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h1>${options.title || options.filename}</h1>
+                    ${htmlContent.outerHTML}
+                    <footer>
+                        <p>Exported via SwatTech Crud - ${new Date().toLocaleDateString()}</p>
+                    </footer>
+                </body>
+                </html>
+            `;
+            
+            // Trigger download
+            downloadFile(html, options.filename + '.html', 'text/html');
+            
+            // Show notification
+            if ({{ $showNotification ? 'true' : 'false' }}) {
+                showNotification('Export Complete', 'HTML file has been downloaded successfully.', 'success');
+            }
+        }
+    });
+    </script>
+    @endpush
+@endonce

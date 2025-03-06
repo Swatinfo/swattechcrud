@@ -1,0 +1,330 @@
+{{-- 
+Component Class: SwatTech\Crud\View\Components\Modal
+
+Properties:
+    - id: string (required) - Unique identifier for the modal
+    - title: string - Modal title displayed in the header
+    - size: string - Modal size (sm, md, lg, xl, fullscreen) - default: md
+    - backdrop: string|boolean - Modal backdrop type (true, false, 'static') - default: true
+    - keyboard: boolean - Whether the modal can be closed with keyboard - default: true
+    - centered: boolean - Whether to vertically center the modal - default: false
+    - scrollable: boolean - Whether to make the modal body scrollable - default: true
+    - animation: string - Animation type (fade, slide-up, slide-down, zoom) - default: fade
+    - closeButton: boolean - Whether to show the close button - default: true
+    - closeOnBackdrop: boolean - Whether clicking backdrop closes modal - default: true
+    - footer: boolean - Whether to show the footer - default: true
+    - draggable: boolean - Whether the modal can be dragged - default: false
+    - zIndex: integer - Custom z-index value - default: 1050
+    - loading: boolean - Whether to show loading indicator - default: false
+    - showSaveButton: boolean - Whether to show a save button - default: true
+    - saveButtonText: string - Text for the save button - default: Save
+    - saveButtonVariant: string - Button variant for save button - default: primary
+    - showCancelButton: boolean - Whether to show a cancel button - default: true 
+    - cancelButtonText: string - Text for the cancel button - default: Cancel
+    - saveFormId: string - ID of form to submit when clicking save - default: null
+    - staticBackdrop: boolean - Whether backdrop is static (no close on click) - default: false
+--}}
+
+@props([
+    'id' => null,
+    'title' => 'Modal Title',
+    'size' => 'md',
+    'backdrop' => true,
+    'keyboard' => true,
+    'centered' => false,
+    'scrollable' => true,
+    'animation' => 'fade',
+    'closeButton' => true,
+    'closeOnBackdrop' => true,
+    'footer' => true,
+    'draggable' => false,
+    'zIndex' => 1050,
+    'loading' => false,
+    'showSaveButton' => true,
+    'saveButtonText' => 'Save',
+    'saveButtonVariant' => 'primary',
+    'showCancelButton' => true,
+    'cancelButtonText' => 'Cancel',
+    'saveFormId' => null,
+    'staticBackdrop' => false
+])
+
+@php
+    $modalId = $id ?? 'modal-' . rand(10000, 99999);
+    $modalSizeClass = match($size) {
+        'sm' => 'modal-sm',
+        'lg' => 'modal-lg',
+        'xl' => 'modal-xl',
+        'fullscreen' => 'modal-fullscreen',
+        default => '',
+    };
+    $animationClass = match($animation) {
+        'slide-up' => 'modal-slide-up',
+        'slide-down' => 'modal-slide-down',
+        'zoom' => 'modal-zoom',
+        default => 'fade',
+    };
+    $backdropOption = $staticBackdrop ? 'static' : ($backdrop ? 'true' : 'false');
+    $keyboardOption = $keyboard ? 'true' : 'false';
+    $centeredClass = $centered ? 'modal-dialog-centered' : '';
+    $scrollableClass = $scrollable ? 'modal-dialog-scrollable' : '';
+@endphp
+
+<div 
+    class="modal {{ $animationClass }}" 
+    id="{{ $modalId }}" 
+    tabindex="-1" 
+    aria-labelledby="{{ $modalId }}-title" 
+    aria-hidden="true" 
+    data-bs-backdrop="{{ $backdropOption }}" 
+    data-bs-keyboard="{{ $keyboardOption }}"
+    style="--modal-z-index: {{ $zIndex }};"
+    {{ $attributes }}
+>
+    <div class="modal-dialog {{ $modalSizeClass }} {{ $centeredClass }} {{ $scrollableClass }}" @if($draggable) data-draggable="true" @endif>
+        <div class="modal-content">
+            @if($loading)
+                <div class="modal-loading-overlay">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            @endif
+            
+            {{-- Modal Header --}}
+            <div class="modal-header @if($draggable) draggable-handle @endif">
+                <h5 class="modal-title" id="{{ $modalId }}-title">{{ $title }}</h5>
+                @if($closeButton)
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                @endif
+            </div>
+            
+            {{-- Modal Body --}}
+            <div class="modal-body">
+                {{ $slot }}
+            </div>
+            
+            {{-- Modal Footer --}}
+            @if($footer)
+                <div class="modal-footer">
+                    {{ $footer ?? '' }}
+                    @if(empty($footer))
+                        @if($showCancelButton)
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ $cancelButtonText }}</button>
+                        @endif
+                        @if($showSaveButton)
+                            <button 
+                                type="button" 
+                                class="btn btn-{{ $saveButtonVariant }}" 
+                                @if($saveFormId) 
+                                    onclick="document.getElementById('{{ $saveFormId }}').submit();" 
+                                @endif 
+                                id="{{ $modalId }}-save-btn"
+                            >
+                                {{ $saveButtonText }}
+                            </button>
+                        @endif
+                    @endif
+                </div>
+            @endif
+        </div>
+    </div>
+</div>
+
+@once
+    @push('styles')
+    <style>
+        .modal {
+            z-index: var(--modal-z-index, 1050);
+        }
+        
+        /* Animation variants */
+        .modal.modal-slide-up.fade .modal-dialog {
+            transform: translate(0, 50px);
+            transition: transform 0.3s ease-out;
+        }
+        
+        .modal.modal-slide-up.show .modal-dialog {
+            transform: translate(0, 0);
+        }
+        
+        .modal.modal-slide-down.fade .modal-dialog {
+            transform: translate(0, -50px);
+            transition: transform 0.3s ease-out;
+        }
+        
+        .modal.modal-slide-down.show .modal-dialog {
+            transform: translate(0, 0);
+        }
+        
+        .modal.modal-zoom.fade .modal-dialog {
+            transform: scale(0.95);
+            transition: transform 0.3s ease-out;
+        }
+        
+        .modal.modal-zoom.show .modal-dialog {
+            transform: scale(1);
+        }
+        
+        /* Draggable modal */
+        .modal-header.draggable-handle {
+            cursor: move;
+        }
+        
+        /* Loading overlay */
+        .modal-loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1060;
+        }
+        
+        /* Ensure proper focus styling for accessibility */
+        .modal-dialog:focus,
+        .modal-dialog *:focus {
+            outline: 2px solid #7367f0;
+            outline-offset: 2px;
+        }
+        
+        /* Improved keyboard focus indicator */
+        .modal-dialog:focus-visible,
+        .modal-dialog *:focus-visible {
+            outline: 2px solid #7367f0;
+            outline-offset: 2px;
+        }
+    </style>
+    @endpush
+
+    @push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize all draggable modals
+            document.querySelectorAll('.modal-dialog[data-draggable="true"]').forEach(function(element) {
+                initDraggableModal(element);
+            });
+            
+            // Handle focus trapping for accessibility
+            document.querySelectorAll('.modal').forEach(function(modal) {
+                initFocusTrap(modal);
+            });
+            
+            // Handle keyboard navigation
+            initKeyboardNavigation();
+        });
+        
+        /**
+         * Initialize draggable functionality for modal
+         */
+        function initDraggableModal(element) {
+            const handle = element.querySelector('.draggable-handle');
+            
+            if (!handle) return;
+            
+            let isDragging = false;
+            let offsetX, offsetY;
+            
+            handle.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                
+                // Get the initial position
+                const rect = element.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+                
+                // Add move and up listeners
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+                
+                // Prevent text selection during drag
+                e.preventDefault();
+            });
+            
+            function onMouseMove(e) {
+                if (!isDragging) return;
+                
+                // Calculate new position
+                const x = e.clientX - offsetX;
+                const y = e.clientY - offsetY;
+                
+                // Apply new position
+                element.style.position = 'absolute';
+                element.style.margin = '0';
+                element.style.left = `${x}px`;
+                element.style.top = `${y}px`;
+            }
+            
+            function onMouseUp() {
+                isDragging = false;
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            }
+        }
+        
+        /**
+         * Initialize focus trapping for modal
+         */
+        function initFocusTrap(modal) {
+            modal.addEventListener('shown.bs.modal', function() {
+                const focusableElements = modal.querySelectorAll(
+                    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+                );
+                
+                const firstElement = focusableElements[0];
+                const lastElement = focusableElements[focusableElements.length - 1];
+                
+                // Focus first element
+                if (firstElement) {
+                    firstElement.focus();
+                }
+                
+                // Trap focus in modal
+                modal.addEventListener('keydown', function(e) {
+                    if (e.key === 'Tab') {
+                        if (e.shiftKey && document.activeElement === firstElement) {
+                            e.preventDefault();
+                            lastElement.focus();
+                        } else if (!e.shiftKey && document.activeElement === lastElement) {
+                            e.preventDefault();
+                            firstElement.focus();
+                        }
+                    }
+                });
+            });
+        }
+        
+        /**
+         * Initialize global keyboard navigation handlers
+         */
+        function initKeyboardNavigation() {
+            document.addEventListener('keydown', function(e) {
+                // Find visible modals
+                const visibleModals = Array.from(document.querySelectorAll('.modal.show'));
+                
+                if (visibleModals.length === 0) return;
+                
+                // Get the top-most modal (highest z-index)
+                const topModal = visibleModals.reduce((highest, current) => {
+                    const highestZIndex = parseInt(getComputedStyle(highest).zIndex, 10) || 1050;
+                    const currentZIndex = parseInt(getComputedStyle(current).zIndex, 10) || 1050;
+                    return currentZIndex > highestZIndex ? current : highest;
+                });
+                
+                // Handle Escape key
+                if (e.key === 'Escape') {
+                    // Check if the modal allows keyboard closing
+                    if (topModal.getAttribute('data-bs-keyboard') === 'true') {
+                        const bsModal = bootstrap.Modal.getInstance(topModal);
+                        if (bsModal) bsModal.hide();
+                    }
+                }
+            });
+        }
+    </script>
+    @endpush
+@endonce

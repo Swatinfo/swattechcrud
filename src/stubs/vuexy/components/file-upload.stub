@@ -1,0 +1,1072 @@
+{{-- 
+Component Class: SwatTech\Crud\View\Components\FileUpload
+
+Properties:
+    - id: string - Unique identifier for the file upload component (default: auto-generated)
+    - name: string - Input name attribute (required)
+    - label: string - Label text for the file upload (default: 'Upload File')
+    - accept: string - File types to accept (default: '*')
+    - multiple: boolean - Allow multiple file uploads (default: false)
+    - maxFiles: integer - Maximum number of files allowed when multiple=true (default: 10)
+    - maxFileSize: string - Maximum file size allowed (e.g., '2MB', default: '5MB')
+    - minFileSize: string - Minimum file size allowed (default: null)
+    - imagePreview: boolean - Show image previews for image files (default: true)
+    - imageHeight: string - Maximum height for image previews (default: '150px')
+    - dropzoneText: string - Text to show in the dropzone (default: 'Drag & drop files or click to browse')
+    - enableCrop: boolean - Enable image cropping functionality (default: false)
+    - cropAspectRatio: float - Aspect ratio for cropping (default: 1)
+    - required: boolean - Whether the field is required (default: false)
+    - disabled: boolean - Whether the field is disabled (default: false)
+    - instantUpload: boolean - Upload files immediately instead of on form submit (default: false)
+    - uploadUrl: string - URL to upload files to when instantUpload=true (default: null)
+    - queueable: boolean - Enable upload queue management (default: true)
+    - showProgress: boolean - Show upload progress (default: true)
+    - errorMessages: array - Custom error messages (default: [])
+    - containerClass: string - Additional CSS classes for the container (default: '')
+    - fileListClass: string - Additional CSS classes for the file list (default: '')
+    - helpText: string - Additional help text to display (default: null)
+    - fileSizeValidationMessage: string - Message when file size validation fails (default: 'File size must be less than %s')
+    - fileTypeValidationMessage: string - Message when file type validation fails (default: 'File type not allowed')
+    - maxFilesValidationMessage: string - Message when max files validation fails (default: 'Maximum %s files allowed')
+--}}
+
+@props([
+    'id' => 'file-upload-'.uniqid(),
+    'name',
+    'label' => 'Upload File',
+    'accept' => '*',
+    'multiple' => false,
+    'maxFiles' => 10,
+    'maxFileSize' => '5MB',
+    'minFileSize' => null,
+    'imagePreview' => true,
+    'imageHeight' => '150px',
+    'dropzoneText' => 'Drag & drop files or click to browse',
+    'enableCrop' => false,
+    'cropAspectRatio' => 1,
+    'required' => false,
+    'disabled' => false,
+    'instantUpload' => false,
+    'uploadUrl' => null,
+    'queueable' => true,
+    'showProgress' => true,
+    'errorMessages' => [],
+    'containerClass' => '',
+    'fileListClass' => '',
+    'helpText' => null,
+    'fileSizeValidationMessage' => 'File size must be less than %s',
+    'fileTypeValidationMessage' => 'File type not allowed',
+    'maxFilesValidationMessage' => 'Maximum %s files allowed'
+])
+
+@php
+    // Convert to bytes for JS
+    $maxFileSizeBytes = null;
+    $minFileSizeBytes = null;
+    
+    if ($maxFileSize) {
+        $maxFileSizeBytes = preg_match('/^(\d+)(KB|MB|GB)?$/i', $maxFileSize, $matches);
+        if ($maxFileSizeBytes) {
+            $size = (int) $matches[1];
+            $unit = strtoupper($matches[2] ?? 'B');
+            
+            switch ($unit) {
+                case 'KB': $maxFileSizeBytes = $size * 1024; break;
+                case 'MB': $maxFileSizeBytes = $size * 1024 * 1024; break;
+                case 'GB': $maxFileSizeBytes = $size * 1024 * 1024 * 1024; break;
+                default: $maxFileSizeBytes = $size;
+            }
+        }
+    }
+    
+    if ($minFileSize) {
+        $minFileSizeBytes = preg_match('/^(\d+)(KB|MB|GB)?$/i', $minFileSize, $matches);
+        if ($minFileSizeBytes) {
+            $size = (int) $matches[1];
+            $unit = strtoupper($matches[2] ?? 'B');
+            
+            switch ($unit) {
+                case 'KB': $minFileSizeBytes = $size * 1024; break;
+                case 'MB': $minFileSizeBytes = $size * 1024 * 1024; break;
+                case 'GB': $minFileSizeBytes = $size * 1024 * 1024 * 1024; break;
+                default: $minFileSizeBytes = $size;
+            }
+        }
+    }
+    
+    // Convert accept attribute to valid value
+    $acceptAttr = $accept;
+    if (is_array($accept)) {
+        $acceptAttr = implode(',', $accept);
+    } elseif ($accept === 'image') {
+        $acceptAttr = 'image/*';
+    } elseif ($accept === 'document') {
+        $acceptAttr = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt';
+    } elseif ($accept === 'video') {
+        $acceptAttr = 'video/*';
+    } elseif ($accept === 'audio') {
+        $acceptAttr = 'audio/*';
+    }
+    
+    // Create a unique ID for the crop modal if cropping is enabled
+    $cropModalId = $id . '-crop-modal';
+    
+    // Determine if the component should use FilePond
+    $useFilePond = true;
+    
+    // Get current value if exists (for edit forms)
+    $currentValue = old($name) ?? ($attributes['value'] ?? null);
+@endphp
+
+<div id="{{ $id }}-container" class="file-upload-component {{ $containerClass }}">
+    <div class="mb-1">
+        @if($label)
+            <label for="{{ $id }}" class="form-label">
+                {{ $label }}
+                @if($required)
+                    <span class="text-danger">*</span>
+                @endif
+            </label>
+        @endif
+        
+        <div class="file-upload-wrapper">
+            @if($useFilePond)
+                {{-- FilePond Upload Area --}}
+                <div class="filepond-wrapper">
+                    <input 
+                        type="file" 
+                        id="{{ $id }}" 
+                        name="{{ $name }}{{ $multiple ? '[]' : '' }}" 
+                        class="filepond" 
+                        @if($multiple) multiple @endif
+                        @if($disabled) disabled @endif
+                        @if($required) required @endif
+                        @if($acceptAttr !== '*') accept="{{ $acceptAttr }}" @endif
+                    />
+                </div>
+                
+                @if($helpText)
+                    <div class="form-text text-muted mt-1">{{ $helpText }}</div>
+                @endif
+                
+                {{-- Error display area --}}
+                <div id="{{ $id }}-error" class="invalid-feedback d-none"></div>
+            @else
+                {{-- Fallback Upload Area with Drag & Drop --}}
+                <div class="file-upload-area @if($disabled) disabled @endif" data-upload-area>
+                    <div class="file-upload-message text-center">
+                        <i class="fas fa-cloud-upload-alt fa-3x mb-2" aria-hidden="true"></i>
+                        <p class="file-upload-text">{{ $dropzoneText }}</p>
+                        <p class="file-upload-help text-muted small">
+                            @if($maxFileSize)
+                                Maximum file size: {{ $maxFileSize }}
+                            @endif
+                            @if($accept !== '*')
+                                @if($maxFileSize) | @endif
+                                Allowed types: {{ is_array($accept) ? implode(', ', $accept) : $accept }}
+                            @endif
+                        </p>
+                    </div>
+                    
+                    <input 
+                        type="file" 
+                        id="{{ $id }}" 
+                        name="{{ $name }}{{ $multiple ? '[]' : '' }}" 
+                        class="file-upload-input" 
+                        data-upload-input
+                        @if($multiple) multiple @endif
+                        @if($disabled) disabled @endif
+                        @if($required) required @endif
+                        @if($acceptAttr !== '*') accept="{{ $acceptAttr }}" @endif
+                    />
+                    
+                    <div class="file-upload-drag-message">Drop files here</div>
+                </div>
+                
+                @if($helpText)
+                    <div class="form-text text-muted mt-1">{{ $helpText }}</div>
+                @endif
+                
+                {{-- Error display area --}}
+                <div id="{{ $id }}-error" class="invalid-feedback d-none"></div>
+                
+                {{-- File list for preview --}}
+                <div id="{{ $id }}-file-list" class="file-list mt-2 {{ $fileListClass }}"></div>
+                
+                {{-- Upload progress --}}
+                @if($showProgress)
+                    <div id="{{ $id }}-progress-container" class="progress mt-2 d-none">
+                        <div id="{{ $id }}-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                @endif
+            @endif
+        </div>
+    </div>
+</div>
+
+{{-- Crop Modal for Image Cropping --}}
+@if($enableCrop && $imagePreview)
+<div class="modal fade" id="{{ $cropModalId }}" tabindex="-1" aria-labelledby="{{ $cropModalId }}-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="{{ $cropModalId }}-label">Crop Image</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="img-container">
+                    <img id="{{ $id }}-crop-image" src="" alt="Image to crop">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="{{ $id }}-crop-apply">Apply Crop</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+@once
+    @push('styles')
+    <style>
+    /* Basic file upload styling */
+    .file-upload-component .file-upload-area {
+        position: relative;
+        border: 2px dashed #ebe9f1;
+        border-radius: 0.428rem;
+        padding: 2rem 1rem;
+        text-align: center;
+        background-color: #f8f8f8;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        overflow: hidden;
+    }
+    
+    .file-upload-component .file-upload-area:hover,
+    .file-upload-component .file-upload-area.dragover {
+        background-color: #f1f1f1;
+        border-color: #7367f0;
+    }
+    
+    .file-upload-component .file-upload-area.disabled {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+    
+    .file-upload-component .file-upload-input {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+        z-index: 2;
+    }
+    
+    .file-upload-component .file-upload-drag-message {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: #7367f0;
+        background-color: rgba(255, 255, 255, 0.8);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.2s ease;
+        z-index: 1;
+    }
+    
+    .file-upload-component .file-upload-area.dragover .file-upload-drag-message {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    /* File list styling */
+    .file-upload-component .file-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .file-upload-component .file-item {
+        position: relative;
+        border: 1px solid #ebe9f1;
+        border-radius: 0.357rem;
+        padding: 0.5rem;
+        background-color: #fff;
+        max-width: 150px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .file-upload-component .file-item-preview {
+        position: relative;
+        width: 100%;
+        margin-bottom: 0.5rem;
+        border-radius: 0.25rem;
+        overflow: hidden;
+    }
+    
+    .file-upload-component .file-item-preview img {
+        width: 100%;
+        object-fit: cover;
+        border-radius: 0.25rem;
+    }
+    
+    .file-upload-component .file-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 80px;
+        font-size: 2rem;
+        color: #82868b;
+    }
+    
+    .file-upload-component .file-item-info {
+        font-size: 0.75rem;
+        word-break: break-word;
+    }
+    
+    .file-upload-component .file-item-name {
+        margin-bottom: 0.25rem;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .file-upload-component .file-item-size {
+        color: #82868b;
+    }
+    
+    .file-upload-component .file-item-remove {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background-color: rgba(234, 84, 85, 0.9);
+        color: #fff;
+        cursor: pointer;
+        font-size: 0.75rem;
+        line-height: 1;
+        opacity: 0.8;
+        transition: opacity 0.2s ease;
+        z-index: 3;
+    }
+    
+    .file-upload-component .file-item-remove:hover {
+        opacity: 1;
+    }
+    
+    .file-upload-component .file-upload-error {
+        color: #ea5455;
+        margin-top: 0.25rem;
+        font-size: 0.857rem;
+    }
+    
+    /* Progress bar styling */
+    .file-upload-component .progress {
+        height: 0.357rem;
+        margin-top: 0.75rem;
+    }
+    
+    .file-upload-component .progress-bar {
+        background-color: #7367f0;
+    }
+    
+    /* FilePond customization */
+    .filepond--panel-root {
+        border-radius: 0.428rem;
+        background-color: #f8f8f8;
+    }
+    
+    .filepond--drop-label {
+        color: #6e6b7b;
+    }
+    
+    .filepond--label-action {
+        text-decoration-color: #7367f0;
+    }
+    
+    .filepond--panel-root {
+        border: 2px dashed #ebe9f1;
+    }
+    
+    /* Cropper customization */
+    .img-container {
+        max-height: 500px;
+        width: 100%;
+        margin: 0 auto;
+    }
+    
+    /* Accessibility improvements */
+    .file-upload-component .file-upload-area:focus-within {
+        border-color: #7367f0;
+        box-shadow: 0 0 0 0.2rem rgba(115, 103, 240, 0.25);
+        outline: 0;
+    }
+    
+    .file-upload-component .file-upload-input:focus {
+        outline: none;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 767.98px) {
+        .file-upload-component .file-list {
+            justify-content: center;
+        }
+    }
+    </style>
+    @endpush
+
+    @push('scripts')
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize FilePond if available
+        if (typeof FilePond !== 'undefined') {
+            // Register FilePond plugins if available
+            if (typeof FilePondPluginFileValidateSize !== 'undefined') {
+                FilePond.registerPlugin(FilePondPluginFileValidateSize);
+            }
+            if (typeof FilePondPluginFileValidateType !== 'undefined') {
+                FilePond.registerPlugin(FilePondPluginFileValidateType);
+            }
+            if (typeof FilePondPluginImagePreview !== 'undefined') {
+                FilePond.registerPlugin(FilePondPluginImagePreview);
+            }
+            if (typeof FilePondPluginImageCrop !== 'undefined' && "{{ $enableCrop }}" === "1") {
+                FilePond.registerPlugin(FilePondPluginImageCrop);
+            }
+            if (typeof FilePondPluginImageResize !== 'undefined') {
+                FilePond.registerPlugin(FilePondPluginImageResize);
+            }
+            if (typeof FilePondPluginImageTransform !== 'undefined') {
+                FilePond.registerPlugin(FilePondPluginImageTransform);
+            }
+            
+            // Find all filepond elements and initialize
+            document.querySelectorAll('input.filepond').forEach(function(inputElement) {
+                const id = inputElement.id;
+                const multiple = inputElement.hasAttribute('multiple');
+                const required = inputElement.hasAttribute('required');
+                const maxFileSize = "{{ $maxFileSizeBytes }}" || null;
+                const minFileSize = "{{ $minFileSizeBytes }}" || null;
+                const acceptedFileTypes = inputElement.getAttribute('accept') || null;
+                const instantUpload = "{{ $instantUpload }}" === "1";
+                const maxFiles = multiple ? {{ $maxFiles }} : 1;
+                
+                // Initialize FilePond
+                const pond = FilePond.create(inputElement, {
+                    allowMultiple: multiple,
+                    maxFiles: maxFiles,
+                    required: required,
+                    allowFileSizeValidation: !!maxFileSize || !!minFileSize,
+                    maxFileSize: maxFileSize,
+                    minFileSize: minFileSize,
+                    allowFileTypeValidation: !!acceptedFileTypes,
+                    acceptedFileTypes: acceptedFileTypes ? acceptedFileTypes.split(',') : null,
+                    allowImagePreview: "{{ $imagePreview }}" === "1",
+                    imagePreviewHeight: parseInt("{{ str_replace('px', '', $imageHeight) }}") || 150,
+                    allowImageCrop: "{{ $enableCrop }}" === "1",
+                    imageCropAspectRatio: "{{ $cropAspectRatio }}",
+                    server: instantUpload ? {
+                        url: "{{ $uploadUrl ?? '/upload' }}",
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                        }
+                    } : null,
+                    labelIdle: "{{ $dropzoneText }}",
+                    labelFileTypeNotAllowed: "{{ $fileTypeValidationMessage }}",
+                    fileValidateTypeLabelExpectedTypes: 'Expects {allButLastType} or {lastType}',
+                    labelMaxFileSizeExceeded: "{{ str_replace('%s', $maxFileSize, $fileSizeValidationMessage) }}",
+                    labelMaxFileSize: 'Maximum file size is {filesize}',
+                    labelMaxTotalFileSizeExceeded: 'Maximum total size exceeded',
+                    labelMaxTotalFileSize: 'Maximum total file size is {filesize}',
+                    credits: false
+                });
+                
+                // Handle FilePond events
+                pond.on('warning', (error, file) => {
+                    console.warn('FilePond warning:', error, file);
+                });
+                
+                pond.on('error', (error, file) => {
+                    console.error('FilePond error:', error, file);
+                    
+                    // Show error message
+                    const errorContainer = document.getElementById(`${id}-error`);
+                    if (errorContainer) {
+                        errorContainer.textContent = error.main || 'An error occurred with this file.';
+                        errorContainer.classList.remove('d-none');
+                    }
+                });
+                
+                // Store the pond instance
+                window[`${id}Pond`] = pond;
+            });
+        } else {
+            // Fallback to vanilla JavaScript implementation
+            initializeVanillaFileUpload();
+        }
+        
+        // Initialize Cropper if available and enabled
+        if (typeof Cropper !== 'undefined' && "{{ $enableCrop }}" === "1") {
+            initializeCropper("{{ $id }}", {{ $cropAspectRatio }});
+        }
+        
+        /**
+         * Initialize vanilla JavaScript file upload
+         */
+        function initializeVanillaFileUpload() {
+            const fileUploadAreas = document.querySelectorAll('[data-upload-area]');
+            
+            fileUploadAreas.forEach(function(area) {
+                const fileInput = area.querySelector('[data-upload-input]');
+                const fileListEl = document.getElementById(`${fileInput.id}-file-list`);
+                const errorEl = document.getElementById(`${fileInput.id}-error`);
+                const progressContainer = document.getElementById(`${fileInput.id}-progress-container`);
+                const progressBar = document.getElementById(`${fileInput.id}-progress-bar`);
+                
+                const maxFileSize = {{ $maxFileSizeBytes ?: 'null' }};
+                const minFileSize = {{ $minFileSizeBytes ?: 'null' }};
+                const maxFiles = {{ $multiple ? $maxFiles : 1 }};
+                const acceptedTypes = "{{ $acceptAttr }}";
+                
+                // Handle drag and drop events
+                area.addEventListener('dragenter', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.classList.add('dragover');
+                });
+                
+                area.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.classList.add('dragover');
+                });
+                
+                area.addEventListener('dragleave', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.classList.remove('dragover');
+                });
+                
+                area.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.classList.remove('dragover');
+                    
+                    if (e.dataTransfer.files.length > 0) {
+                        fileInput.files = e.dataTransfer.files;
+                        handleFiles(fileInput.files);
+                    }
+                });
+                
+                // Handle file input change
+                fileInput.addEventListener('change', function() {
+                    handleFiles(this.files);
+                });
+                
+                // Handle file selection
+                function handleFiles(files) {
+                    // Clear previous errors
+                    if (errorEl) {
+                        errorEl.textContent = '';
+                        errorEl.classList.add('d-none');
+                    }
+                    
+                    // Check file count
+                    if (maxFiles && files.length > maxFiles) {
+                        showError(`{{ str_replace('%s', $maxFiles, $maxFilesValidationMessage) }}`);
+                        fileInput.value = '';
+                        return;
+                    }
+                    
+                    // Validate each file
+                    const validFiles = Array.from(files).filter(file => {
+                        // Check file size
+                        if (maxFileSize && file.size > maxFileSize) {
+                            showError(`File "${file.name}": {{ str_replace('%s', $maxFileSize, $fileSizeValidationMessage) }}`);
+                            return false;
+                        }
+                        
+                        if (minFileSize && file.size < minFileSize) {
+                            showError(`File "${file.name}": File size must be at least {{ $minFileSize }}`);
+                            return false;
+                        }
+                        
+                        // Check file type
+                        if (acceptedTypes && acceptedTypes !== '*') {
+                            const fileType = file.type;
+                            const fileName = file.name;
+                            const fileExtension = fileName.split('.').pop().toLowerCase();
+                            
+                            // Handle mime type patterns like image/*
+                            if (acceptedTypes.includes('/*')) {
+                                const acceptedBaseTypes = acceptedTypes.split(',').map(type => {
+                                    if (type.endsWith('/*')) {
+                                        return type.substring(0, type.length - 2);
+                                    }
+                                    return null;
+                                }).filter(Boolean);
+                                
+                                const isValidMimePattern = acceptedBaseTypes.some(baseType => 
+                                    fileType.startsWith(baseType + '/'));
+                                
+                                if (!isValidMimePattern) {
+                                    showError(`File "${fileName}": {{ $fileTypeValidationMessage }}`);
+                                    return false;
+                                }
+                            } 
+                            // Handle specific file extensions
+                            else if (acceptedTypes.startsWith('.')) {
+                                const acceptedExtensions = acceptedTypes.split(',').map(ext => 
+                                    ext.trim().toLowerCase().replace('.', ''));
+                                
+                                if (!acceptedExtensions.includes(fileExtension)) {
+                                    showError(`File "${fileName}": {{ $fileTypeValidationMessage }}`);
+                                    return false;
+                                }
+                            } 
+                            // Handle specific mime types
+                            else {
+                                const acceptedMimeTypes = acceptedTypes.split(',').map(type => type.trim().toLowerCase());
+                                
+                                if (!acceptedMimeTypes.includes(fileType)) {
+                                    showError(`File "${fileName}": {{ $fileTypeValidationMessage }}`);
+                                    return false;
+                                }
+                            }
+                        }
+                        
+                        return true;
+                    });
+                    
+                    // If there are valid files, display them
+                    if (validFiles.length > 0) {
+                        renderFileList(validFiles);
+                        
+                        // Upload files if instant upload is enabled
+                        if ("{{ $instantUpload }}" === "1" && "{{ $uploadUrl }}" !== "") {
+                            uploadFiles(validFiles);
+                        }
+                    } else {
+                        // Clear the file input if no valid files
+                        fileInput.value = '';
+                        if (fileListEl) {
+                            fileListEl.innerHTML = '';
+                        }
+                    }
+                }
+                
+                // Render file list with previews
+                function renderFileList(files) {
+                    if (!fileListEl) return;
+                    
+                    // Clear the file list if not multiple
+                    if (!{{ $multiple ? 'true' : 'false' }}) {
+                        fileListEl.innerHTML = '';
+                    }
+                    
+                    Array.from(files).forEach((file, index) => {
+                        const fileItem = document.createElement('div');
+                        fileItem.className = 'file-item';
+                        fileItem.dataset.fileIndex = index;
+                        
+                        const isImage = file.type.startsWith('image/');
+                        
+                        // File preview
+                        const previewEl = document.createElement('div');
+                        previewEl.className = 'file-item-preview';
+                        
+                        if (isImage && "{{ $imagePreview }}" === "1") {
+                            const img = document.createElement('img');
+                            img.src = URL.createObjectURL(file);
+                            img.onload = function() {
+                                URL.revokeObjectURL(this.src);
+                            };
+                            img.alt = file.name;
+                            img.style.maxHeight = "{{ $imageHeight }}";
+                            previewEl.appendChild(img);
+                            
+                            // Add crop button if enabled
+                            if ("{{ $enableCrop }}" === "1") {
+                                const cropBtn = document.createElement('button');
+                                cropBtn.type = 'button';
+                                cropBtn.className = 'btn btn-sm btn-primary crop-btn';
+                                cropBtn.textContent = 'Crop';
+                                cropBtn.dataset.fileIndex = index;
+                                cropBtn.addEventListener('click', function() {
+                                    openCropModal(file, index);
+                                });
+                                previewEl.appendChild(cropBtn);
+                            }
+                        } else {
+                            // Show file icon
+                            const iconEl = document.createElement('div');
+                            iconEl.className = 'file-icon';
+                            
+                            // Determine file icon based on type
+                            let iconClass = 'fas fa-file';
+                            if (file.type.startsWith('image/')) {
+                                iconClass = 'fas fa-file-image';
+                            } else if (file.type.startsWith('video/')) {
+                                iconClass = 'fas fa-file-video';
+                            } else if (file.type.startsWith('audio/')) {
+                                iconClass = 'fas fa-file-audio';
+                            } else if (file.type.includes('pdf')) {
+                                iconClass = 'fas fa-file-pdf';
+                            } else if (file.type.includes('word') || file.type.includes('document')) {
+                                                                iconClass = 'fas fa-file-word';
+                            } else if (file.type.includes('excel') || file.type.includes('sheet')) {
+                                iconClass = 'fas fa-file-excel';
+                            } else if (file.type.includes('presentation') || file.type.includes('powerpoint')) {
+                                iconClass = 'fas fa-file-powerpoint';
+                            } else if (file.type.includes('text/plain')) {
+                                iconClass = 'fas fa-file-alt';
+                            } else if (file.type.includes('zip') || file.type.includes('compressed')) {
+                                iconClass = 'fas fa-file-archive';
+                            } else if (file.type.includes('code') || file.name.match(/\.(js|html|css|php|java|py|rb|cs|ts)$/i)) {
+                                iconClass = 'fas fa-file-code';
+                            }
+                            
+                            const icon = document.createElement('i');
+                            icon.className = iconClass;
+                            iconEl.appendChild(icon);
+                            previewEl.appendChild(iconEl);
+                        }
+                        
+                        // File info
+                        const infoEl = document.createElement('div');
+                        infoEl.className = 'file-item-info';
+                        
+                        const nameEl = document.createElement('div');
+                        nameEl.className = 'file-item-name';
+                        nameEl.title = file.name;
+                        nameEl.textContent = file.name.length > 20 ? 
+                            file.name.substring(0, 17) + '...' : file.name;
+                        
+                        const sizeEl = document.createElement('div');
+                        sizeEl.className = 'file-item-size';
+                        sizeEl.textContent = formatFileSize(file.size);
+                        
+                        infoEl.appendChild(nameEl);
+                        infoEl.appendChild(sizeEl);
+                        
+                        // Add remove button
+                        const removeBtn = document.createElement('button');
+                        removeBtn.type = 'button';
+                        removeBtn.className = 'file-item-remove';
+                        removeBtn.innerHTML = '<i class="fas fa-times" aria-hidden="true"></i>';
+                        removeBtn.title = 'Remove file';
+                        removeBtn.setAttribute('aria-label', 'Remove file');
+                        removeBtn.addEventListener('click', function() {
+                            // Create a new FileList without this file
+                            const dt = new DataTransfer();
+                            const files = fileInput.files;
+                            
+                            for (let i = 0; i < files.length; i++) {
+                                if (i !== parseInt(fileItem.dataset.fileIndex)) {
+                                    dt.items.add(files[i]);
+                                }
+                            }
+                            
+                            fileInput.files = dt.files;
+                            fileItem.remove();
+                            
+                            // If no files left and field is required, show validation
+                            if (fileInput.files.length === 0 && fileInput.required) {
+                                fileInput.setCustomValidity('Please select a file');
+                            } else {
+                                fileInput.setCustomValidity('');
+                            }
+                        });
+                        
+                        fileItem.appendChild(previewEl);
+                        fileItem.appendChild(infoEl);
+                        fileItem.appendChild(removeBtn);
+                        fileListEl.appendChild(fileItem);
+                    });
+                }
+                
+                // Helper function to format file size
+                function formatFileSize(bytes) {
+                    if (bytes === 0) return '0 Bytes';
+                    
+                    const k = 1024;
+                    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                }
+                
+                // Upload files if instantUpload is enabled
+                function uploadFiles(files) {
+                    if (!progressContainer || !progressBar) return;
+                    
+                    // Create FormData
+                    const formData = new FormData();
+                    
+                    // Append files to FormData
+                    Array.from(files).forEach(file => {
+                        formData.append("{{ $name }}" + ({{ $multiple ? 'true' : 'false' }} ? '[]' : ''), file);
+                    });
+                    
+                    // Add CSRF token if available
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    if (csrfToken) {
+                        formData.append('_token', csrfToken);
+                    }
+                    
+                    // Create and send request
+                    const xhr = new XMLHttpRequest();
+                    
+                    // Show progress container
+                    progressContainer.classList.remove('d-none');
+                    
+                    // Handle progress
+                    xhr.upload.addEventListener('progress', function(e) {
+                        if (e.lengthComputable) {
+                            const percentComplete = Math.round((e.loaded / e.total) * 100);
+                            progressBar.style.width = percentComplete + '%';
+                            progressBar.setAttribute('aria-valuenow', percentComplete);
+                        }
+                    });
+                    
+                    // Handle response
+                    xhr.addEventListener('load', function() {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            // Success
+                            progressBar.classList.remove('progress-bar-animated');
+                            progressBar.classList.add('bg-success');
+                            
+                            // Hide progress after a delay
+                            setTimeout(() => {
+                                progressContainer.classList.add('d-none');
+                                progressBar.style.width = '0%';
+                                progressBar.classList.remove('bg-success');
+                                progressBar.classList.add('progress-bar-animated');
+                            }, 1500);
+                            
+                            try {
+                                // Parse response if JSON
+                                const response = JSON.parse(xhr.responseText);
+                                
+                                // Trigger success event
+                                const event = new CustomEvent('fileupload:success', {
+                                    detail: { response }
+                                });
+                                fileInput.dispatchEvent(event);
+                            } catch (e) {
+                                console.warn('Upload response is not valid JSON', e);
+                            }
+                        } else {
+                            // Error
+                            handleUploadError(xhr);
+                        }
+                    });
+                    
+                    // Handle errors
+                    xhr.addEventListener('error', function() {
+                        handleUploadError(xhr);
+                    });
+                    
+                    // Send request
+                    xhr.open('POST', "{{ $uploadUrl }}", true);
+                    xhr.send(formData);
+                }
+                
+                // Handle upload errors
+                function handleUploadError(xhr) {
+                    progressBar.classList.remove('progress-bar-animated');
+                    progressBar.classList.add('bg-danger');
+                    
+                    // Show error message
+                    let errorMessage = 'Upload failed. Please try again.';
+                    
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.message) {
+                            errorMessage = response.message;
+                        }
+                    } catch (e) {
+                        console.warn('Error response is not valid JSON', e);
+                    }
+                    
+                    showError(errorMessage);
+                    
+                    // Hide progress after a delay
+                    setTimeout(() => {
+                        progressContainer.classList.add('d-none');
+                        progressBar.style.width = '0%';
+                        progressBar.classList.remove('bg-danger');
+                        progressBar.classList.add('progress-bar-animated');
+                    }, 1500);
+                    
+                    // Trigger error event
+                    const event = new CustomEvent('fileupload:error', {
+                        detail: { xhr }
+                    });
+                    fileInput.dispatchEvent(event);
+                }
+                
+                // Show error message
+                function showError(message) {
+                    if (errorEl) {
+                        errorEl.textContent = message;
+                        errorEl.classList.remove('d-none');
+                    }
+                }
+            });
+        }
+        
+        /**
+         * Initialize image cropper
+         */
+        function initializeCropper(id, aspectRatio) {
+            let cropper = null;
+            let currentFileIndex = null;
+            const cropModalId = `${id}-crop-modal`;
+            const cropModal = document.getElementById(cropModalId);
+            const cropImage = document.getElementById(`${id}-crop-image`);
+            const cropApplyBtn = document.getElementById(`${id}-crop-apply`);
+            
+            if (!cropModal || !cropImage || !cropApplyBtn) return;
+            
+            // Initialize Bootstrap modal
+            const modal = new bootstrap.Modal(cropModal);
+            
+            // Open crop modal
+            window.openCropModal = function(file, fileIndex) {
+                // Set current file index
+                currentFileIndex = fileIndex;
+                
+                // Load image
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    cropImage.src = e.target.result;
+                    
+                    // Show modal
+                    modal.show();
+                    
+                    // Wait for modal to be fully shown before initializing cropper
+                    cropModal.addEventListener('shown.bs.modal', function onModalShown() {
+                        // Initialize cropper
+                        cropper = new Cropper(cropImage, {
+                            aspectRatio: aspectRatio,
+                            viewMode: 1,
+                            autoCropArea: 1,
+                            responsive: true,
+                            zoomable: true,
+                            scalable: false
+                        });
+                        
+                        cropModal.removeEventListener('shown.bs.modal', onModalShown);
+                    });
+                };
+                reader.readAsDataURL(file);
+            };
+            
+            // Handle crop modal hidden event
+            cropModal.addEventListener('hidden.bs.modal', function() {
+                if (cropper) {
+                    cropper.destroy();
+                    cropper = null;
+                }
+                cropImage.src = '';
+            });
+            
+            // Apply crop
+            cropApplyBtn.addEventListener('click', function() {
+                if (!cropper) return;
+                
+                const fileInput = document.getElementById(id);
+                const files = fileInput.files;
+                
+                if (currentFileIndex === null || !files || !files[currentFileIndex]) {
+                    modal.hide();
+                    return;
+                }
+                
+                // Get cropped canvas
+                const canvas = cropper.getCroppedCanvas({
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high'
+                });
+                
+                if (!canvas) {
+                    console.error('Failed to crop image');
+                    modal.hide();
+                    return;
+                }
+                
+                // Convert canvas to blob
+                canvas.toBlob(function(blob) {
+                    if (!blob) {
+                        console.error('Failed to convert canvas to blob');
+                        modal.hide();
+                        return;
+                    }
+                    
+                    // Create new file from blob
+                    const file = files[currentFileIndex];
+                    const croppedFile = new File([blob], file.name, {
+                        type: file.type,
+                        lastModified: file.lastModified
+                    });
+                    
+                    // Replace file in input
+                    const dt = new DataTransfer();
+                    
+                    for (let i = 0; i < files.length; i++) {
+                        if (i === currentFileIndex) {
+                            dt.items.add(croppedFile);
+                        } else {
+                            dt.items.add(files[i]);
+                        }
+                    }
+                    
+                    fileInput.files = dt.files;
+                    
+                    // Update preview
+                    const fileListEl = document.getElementById(`${id}-file-list`);
+                    if (fileListEl) {
+                        const fileItem = fileListEl.querySelector(`[data-file-index="${currentFileIndex}"]`);
+                        if (fileItem) {
+                            const imgEl = fileItem.querySelector('img');
+                            if (imgEl) {
+                                imgEl.src = URL.createObjectURL(croppedFile);
+                                // Clean up object URL after image loads
+                                imgEl.onload = function() {
+                                    URL.revokeObjectURL(this.src);
+                                };
+                            }
+                        }
+                    }
+                    
+                    // Close modal
+                    modal.hide();
+                    
+                    // Trigger change event on file input to update any listeners
+                    const event = new Event('change', { bubbles: true });
+                    fileInput.dispatchEvent(event);
+                    
+                }, file.type);
+            });
+        }
+    });
+    </script>
+    @endpush
+@endonce

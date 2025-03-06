@@ -1,0 +1,780 @@
+@extends('layouts.app')
+
+@section('title', 'Edit {{modelName}}')
+
+@section('content')
+<div class="content-wrapper">
+    <!-- Content Header -->
+    <div class="content-header row">
+        <div class="content-header-left col-md-9 col-12 mb-2">
+            <div class="row breadcrumbs-top">
+                <div class="col-12">
+                    <h2 class="content-header-title float-start mb-0">Edit {{modelName}}</h2>
+                    <div class="breadcrumb-wrapper">
+                        {!! $breadcrumbs ?? '' !!}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="content-header-right text-md-end col-md-3 col-12 d-md-block">
+            <div class="mb-1 breadcrumb-right">
+                @can('view', ${{modelVariable}})
+                <a href="{{ route('{{routeName}}.show', ${{modelVariable}}) }}" class="btn btn-outline-primary">
+                    <i data-feather="eye"></i> View
+                </a>
+                @endcan
+                
+                <!-- Preview button with modal trigger -->
+                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#previewModal">
+                    <i data-feather="search"></i> Preview
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- /Content Header -->
+
+    <!-- Content Body -->
+    <div class="content-body">
+        <!-- Version History -->
+        @if(class_exists('\Venturecraft\Revisionable\Revisionable') || method_exists(${{modelVariable}}, 'revisionHistory'))
+        <div class="card mb-2">
+            <div class="card-header">
+                <h4 class="card-title">Version History</h4>
+                <div class="heading-elements">
+                    <button data-bs-toggle="collapse" data-bs-target="#versionHistory" class="btn btn-sm btn-outline-primary collapsed" aria-expanded="false">
+                        <i data-feather="clock"></i> Show History
+                    </button>
+                </div>
+            </div>
+            <div id="versionHistory" class="collapse">
+                <div class="card-body pt-0">
+                    @if(method_exists(${{modelVariable}}, 'revisionHistory') && count(${{modelVariable}}->revisionHistory) > 0)
+                        <div class="timeline mt-2">
+                            @foreach(${{modelVariable}}->revisionHistory()->take(10)->get() as $revision)
+                                <div class="timeline-item">
+                                    <div class="timeline-point timeline-point-indicator"></div>
+                                    <div class="timeline-event">
+                                        <div class="d-flex justify-content-between flex-sm-row flex-column mb-sm-0 mb-1">
+                                            <h6>{{ $revision->fieldName() }} changed</h6>
+                                            <span class="timeline-event-time">{{ $revision->created_at->diffForHumans() }}</span>
+                                        </div>
+                                        <p>From: <code>{{ $revision->oldValue() }}</code></p>
+                                        <p>To: <code>{{ $revision->newValue() }}</code></p>
+                                        <p class="text-muted">By: {{ $revision->userResponsible() ? $revision->userResponsible()->name : 'Unknown' }}</p>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="text-muted">No revision history available.</p>
+                    @endif
+                </div>
+            </div>
+        </div>
+        @endif
+        <!-- /Version History -->
+
+        <!-- Validation Errors -->
+        @if ($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <div class="alert-body">
+                <strong>Error!</strong> Please check the form for errors.
+                <ul>
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        @endif
+        <!-- /Validation Errors -->
+
+        <!-- Edit Form -->
+        <form action="{{ route('{{routeName}}.update', ${{modelVariable}}) }}" method="POST" enctype="multipart/form-data" id="edit-form" class="needs-validation" novalidate>
+            @csrf
+            @method('PUT')
+            
+            <div class="row match-height">
+                <!-- Main Fields Section -->
+                <div class="col-12 col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">{{modelName}} Information</h4>
+                        </div>
+                        <div class="card-body">
+                            <!-- Nav tabs -->
+                            <ul class="nav nav-tabs" role="tablist">
+                                <li class="nav-item">
+                                    <a class="nav-link active" id="basic-tab" data-bs-toggle="tab" href="#basic" aria-controls="basic" role="tab" aria-selected="true">
+                                        <i data-feather="info" class="me-25"></i>
+                                        <span class="fw-bold">Basic Information</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" id="advanced-tab" data-bs-toggle="tab" href="#advanced" aria-controls="advanced" role="tab" aria-selected="false">
+                                        <i data-feather="settings" class="me-25"></i>
+                                        <span class="fw-bold">Advanced Settings</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" id="meta-tab" data-bs-toggle="tab" href="#meta" aria-controls="meta" role="tab" aria-selected="false">
+                                        <i data-feather="tag" class="me-25"></i>
+                                        <span class="fw-bold">Meta Data</span>
+                                    </a>
+                                </li>
+                            </ul>
+                            
+                            <!-- Tab content -->
+                            <div class="tab-content">
+                                <!-- Basic info tab -->
+                                <div class="tab-pane active" id="basic" aria-labelledby="basic-tab" role="tabpanel">
+                                    <div class="row mt-2">
+                                        <!-- Basic fields placeholder -->
+                                        <div class="basic-fields">
+                                            {!! $fields ?? '' !!}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Advanced settings tab -->
+                                <div class="tab-pane" id="advanced" aria-labelledby="advanced-tab" role="tabpanel">
+                                    <div class="row mt-2">
+                                        <!-- Advanced fields -->
+                                        <div class="col-12 col-md-6">
+                                            <div class="mb-1">
+                                                <label class="form-label" for="status">Status</label>
+                                                <select class="form-select" id="status" name="status">
+                                                    <option value="active" {{ old('status', ${{modelVariable}}->status) == 'active' ? 'selected' : '' }}>Active</option>
+                                                    <option value="inactive" {{ old('status', ${{modelVariable}}->status) == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                                                    <option value="pending" {{ old('status', ${{modelVariable}}->status) == 'pending' ? 'selected' : '' }}>Pending</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-12 col-md-6">
+                                            <div class="mb-1">
+                                                <label class="form-label" for="visibility">Visibility</label>
+                                                <select class="form-select" id="visibility" name="visibility">
+                                                    <option value="public" {{ old('visibility', ${{modelVariable}}->visibility) == 'public' ? 'selected' : '' }}>Public</option>
+                                                    <option value="private" {{ old('visibility', ${{modelVariable}}->visibility) == 'private' ? 'selected' : '' }}>Private</option>
+                                                    <option value="draft" {{ old('visibility', ${{modelVariable}}->visibility) == 'draft' ? 'selected' : '' }}>Draft</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Conditional field based on status -->
+                                        <div class="col-12 mt-1 status-dependent" id="status-active-options">
+                                            <div class="card bg-light-primary">
+                                                <div class="card-body">
+                                                    <h5 class="card-title">Active Options</h5>
+                                                    <p class="card-text">These options apply only when the status is set to Active.</p>
+                                                    <div class="mb-1">
+                                                        <label class="form-label" for="featured">Featured Item</label>
+                                                        <div class="form-check form-switch">
+                                                            <input type="checkbox" class="form-check-input" id="featured" name="featured" value="1" {{ old('featured', ${{modelVariable}}->featured) ? 'checked' : '' }}>
+                                                            <label class="form-check-label" for="featured">Make this a featured item</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- JSON Editor for complex configuration -->
+                                        <div class="col-12 mt-1">
+                                            <div class="mb-1">
+                                                <label class="form-label" for="config">Configuration (JSON)</label>
+                                                <div id="json-editor-container" class="border rounded p-1">
+                                                    <!-- JSON Editor will be mounted here -->
+                                                </div>
+                                                <input type="hidden" id="config" name="config" value="{{ old('config', ${{modelVariable}}->config ? json_encode(${{modelVariable}}->config) : '{}') }}">
+                                                <small class="form-text text-muted">Edit advanced configuration settings in JSON format.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Meta data tab -->
+                                <div class="tab-pane" id="meta" aria-labelledby="meta-tab" role="tabpanel">
+                                    <div class="row mt-2">
+                                        <div class="col-12 col-md-6">
+                                            <div class="mb-1">
+                                                <label class="form-label" for="meta_title">Meta Title</label>
+                                                <input type="text" class="form-control" id="meta_title" name="meta_title" placeholder="Meta Title" value="{{ old('meta_title', ${{modelVariable}}->meta_title) }}">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-12 col-md-6">
+                                            <div class="mb-1">
+                                                <label class="form-label" for="meta_keywords">Meta Keywords</label>
+                                                <input type="text" class="form-control" id="meta_keywords" name="meta_keywords" placeholder="Keywords, separated, by, commas" value="{{ old('meta_keywords', ${{modelVariable}}->meta_keywords) }}">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-12">
+                                            <div class="mb-1">
+                                                <label class="form-label" for="meta_description">Meta Description</label>
+                                                <textarea class="form-control" id="meta_description" name="meta_description" rows="3" placeholder="Meta Description">{{ old('meta_description', ${{modelVariable}}->meta_description) }}</textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Rich Text Content Section -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">Content</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-1">
+                                <label class="form-label" for="description">Description</label>
+                                <textarea class="form-control editor" id="description" name="description">{{ old('description', ${{modelVariable}}->description) }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- File Upload Section -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">Media Files</h4>
+                        </div>
+                        <div class="card-body">
+                            <!-- Featured image upload -->
+                            <div class="mb-1">
+                                <label for="featured_image" class="form-label">Featured Image</label>
+                                <div class="file-upload-wrapper">
+                                    @if(${{modelVariable}}->featured_image)
+                                    <div class="existing-file mb-1">
+                                        <div class="d-flex align-items-center">
+                                            <img src="{{ asset('storage/' . ${{modelVariable}}->featured_image) }}" alt="Featured Image" class="me-1" style="max-height: 100px; max-width: 100px;">
+                                            <div>
+                                                <p class="mb-0">Current featured image</p>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="remove_featured_image" name="remove_featured_image" value="1">
+                                                    <label class="form-check-label" for="remove_featured_image">Remove this image</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endif
+                                    <div class="file-upload-area">
+                                        <input type="file" class="filepond" name="featured_image" id="featured_image" data-max-file-size="5MB" data-max-files="1" accept="image/*" />
+                                        <p class="text-muted mt-50">Recommended dimensions: 1200x800 pixels. Max size: 5MB.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Gallery images upload -->
+                            <div class="mb-1">
+                                <label for="gallery" class="form-label">Gallery Images</label>
+                                <div class="file-upload-wrapper">
+                                    @if(${{modelVariable}}->gallery && count(${{modelVariable}}->gallery))
+                                    <div class="existing-files mb-1">
+                                        <div class="d-flex flex-wrap">
+                                            @foreach(${{modelVariable}}->gallery as $index => $image)
+                                            <div class="existing-file-item me-1 mb-1 position-relative">
+                                                <img src="{{ asset('storage/' . $image) }}" alt="Gallery Image" style="height: 100px; width: 100px; object-fit: cover;">
+                                                <div class="form-check position-absolute" style="bottom: 5px; right: 5px;">
+                                                    <input class="form-check-input" type="checkbox" id="remove_gallery_{{ $index }}" name="remove_gallery[]" value="{{ $image }}">
+                                                    <label class="form-check-label" for="remove_gallery_{{ $index }}">
+                                                        <i data-feather="trash-2" class="text-danger"></i>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            @endforeach
+                                        </div>
+                                        <p class="text-muted">Check images to remove them from the gallery.</p>
+                                    </div>
+                                    @endif
+                                    <div class="file-upload-area">
+                                        <input type="file" class="filepond" name="gallery[]" id="gallery" multiple data-max-file-size="10MB" data-max-files="5" accept="image/*" />
+                                        <p class="text-muted mt-50">You can upload up to 5 images. Max size per image: 10MB.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Document upload -->
+                            <div class="mb-1">
+                                <label for="documents" class="form-label">Documents</label>
+                                <div class="file-upload-wrapper">
+                                    @if(${{modelVariable}}->documents && count(${{modelVariable}}->documents))
+                                    <div class="existing-files mb-1">
+                                        <div class="list-group">
+                                            @foreach(${{modelVariable}}->documents as $index => $document)
+                                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <i data-feather="file" class="me-1"></i>
+                                                    <a href="{{ asset('storage/' . $document['path']) }}" target="_blank">{{ $document['name'] ?? basename($document['path']) }}</a>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="remove_document_{{ $index }}" name="remove_documents[]" value="{{ $document['path'] }}">
+                                                    <label class="form-check-label" for="remove_document_{{ $index }}">Remove</label>
+                                                </div>
+                                            </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                    @endif
+                                    <div class="file-upload-area">
+                                        <input type="file" class="filepond" name="documents[]" id="documents" multiple data-max-file-size="20MB" data-max-files="3" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
+                                        <p class="text-muted mt-50">Accepted formats: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT. Max size per file: 20MB.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sidebar Section -->
+                <div class="col-12 col-lg-4">
+                    <!-- Relationship Fields Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">Relationships</h4>
+                        </div>
+                        <div class="card-body">
+                            <!-- Field permissions notice -->
+                            @if(!auth()->user()->can('manage_all_fields', ${{modelVariable}}))
+                            <div class="alert alert-info">
+                                <div class="alert-body">
+                                    <i data-feather="info" class="me-1"></i>
+                                    <span>You have limited permissions to edit certain fields.</span>
+                                </div>
+                            </div>
+                            @endif
+                            
+                            <!-- Relationship fields -->
+                            <div class="relationship-fields">
+                                {!! $relationshipFields ?? '' !!}
+                            </div>
+                            
+                            <!-- Dependent dropdown example -->
+                            <div class="mb-1">
+                                <label for="parent_category" class="form-label">Parent Category</label>
+                                <select class="form-select" id="parent_category" name="parent_category_id">
+                                    <option value="">Select a category</option>
+                                    @foreach(\App\Models\Category::whereNull('parent_id')->get() as $category)
+                                        <option value="{{ $category->id }}" {{ old('parent_category_id', ${{modelVariable}}->parent_category_id) == $category->id ? 'selected' : '' }}>
+                                            {{ $category->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            
+                            <div class="mb-1">
+                                <label for="sub_category" class="form-label">Sub Category</label>
+                                <select class="form-select" id="sub_category" name="category_id" disabled>
+                                    <option value="">Select a parent category first</option>
+                                </select>
+                                <!-- Current sub-category will be populated via JS -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Publication Settings Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">Publication Settings</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-1">
+                                <label class="form-label" for="published_at">Publish Date & Time</label>
+                                <input type="text" class="form-control flatpickr-date-time" id="published_at" name="published_at" placeholder="YYYY-MM-DD HH:MM" value="{{ old('published_at', optional(${{modelVariable}}->published_at)->format('Y-m-d H:i')) }}">
+                            </div>
+                            
+                            <div class="mb-1">
+                                <label class="form-label" for="author_id">Author</label>
+                                <select class="form-select" id="author_id" name="author_id" {{ auth()->user()->can('change_author', ${{modelVariable}}) ? '' : 'disabled' }}>
+                                    @foreach(\App\Models\User::all() as $user)
+                                        <option value="{{ $user->id }}" {{ old('author_id', ${{modelVariable}}->author_id) == $user->id ? 'selected' : '' }}>
+                                            {{ $user->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @if(!auth()->user()->can('change_author', ${{modelVariable}}))
+                                    <input type="hidden" name="author_id" value="{{ ${{modelVariable}}->author_id }}">
+                                    <small class="form-text text-muted">You don't have permission to change the author.</small>
+                                @endif
+                            </div>
+                            
+                            <!-- Save buttons -->
+                            <div class="d-flex flex-column mt-2">
+                                <button type="submit" class="btn btn-primary mb-1">Update {{modelName}}</button>
+                                <button type="submit" name="save_and_continue" value="1" class="btn btn-outline-primary mb-1">Save & Continue Editing</button>
+                                <a href="{{ route('{{routeName}}.index') }}" class="btn btn-outline-secondary">Cancel</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+        <!-- /Edit Form -->
+    </div>
+    <!-- /Content Body -->
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="previewModalLabel">Preview {{modelName}}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading preview...</span>
+                </div>
+                <div id="preview-content">
+                    <!-- Preview content will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tabs
+        const triggerTabList = [].slice.call(document.querySelectorAll('#edit-form .nav-tabs a'));
+        triggerTabList.forEach(function(triggerEl) {
+            const tabTrigger = new bootstrap.Tab(triggerEl);
+            triggerEl.addEventListener('click', function(event) {
+                event.preventDefault();
+                tabTrigger.show();
+            });
+        });
+        
+        // Initialize Rich Text Editor for description field
+        if (typeof Quill !== 'undefined' && document.querySelector('.editor')) {
+            new Quill('.editor', {
+                modules: {
+                    toolbar: [
+                        [{ header: [1, 2, 3, 4, 5, 6, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ list: 'ordered' }, { list: 'bullet' }],
+                        [{ color: [] }, { background: [] }],
+                        ['link', 'image'],
+                        ['clean']
+                    ]
+                },
+                theme: 'snow'
+            });
+            
+            // Sync Quill content to hidden textarea before form submit
+            document.getElementById('edit-form').addEventListener('submit', function() {
+                const editor = document.querySelector('.editor');
+                const quill = Quill.find(editor);
+                if (quill) {
+                    document.getElementById('description').value = quill.root.innerHTML;
+                }
+            });
+        }
+        
+        // Initialize FilePond for file uploads
+        if (typeof FilePond !== 'undefined') {
+            // For featured image upload
+            FilePond.create(document.querySelector('input[name="featured_image"]'));
+            
+            // For gallery images upload
+            FilePond.create(document.querySelector('input[name="gallery[]"]'), {
+                allowMultiple: true
+            });
+            
+            // For documents upload
+            FilePond.create(document.querySelector('input[name="documents[]"]'), {
+                allowMultiple: true
+            });
+        }
+        
+        // Initialize Flatpickr for date/time fields
+        if (typeof flatpickr !== 'undefined') {
+            flatpickr('.flatpickr-date-time', {
+                enableTime: true,
+                dateFormat: 'Y-m-d H:i'
+            });
+        }
+        
+        // Initialize JSON Editor
+        if (typeof JSONEditor !== 'undefined') {
+            const container = document.getElementById('json-editor-container');
+            const options = {
+                mode: 'tree',
+                modes: ['tree', 'code', 'form', 'view'],
+                onChangeJSON: function(json) {
+                    document.getElementById('config').value = JSON.stringify(json);
+                }
+            };
+            
+            const editor = new JSONEditor(container, options);
+            
+            // Set initial data
+            try {
+                const initialValue = document.getElementById('config').value;
+                const json = initialValue ? JSON.parse(initialValue) : {};
+                editor.set(json);
+            } catch (e) {
+                console.error('Error parsing JSON:', e);
+                editor.set({});
+            }
+        }
+        
+        // Conditional fields based on status
+        const statusSelect = document.getElementById('status');
+        const statusDependentDivs = document.querySelectorAll('.status-dependent');
+        
+        function updateStatusDependentFields() {
+            const selectedStatus = statusSelect.value;
+            statusDependentDivs.forEach(div => {
+                div.style.display = 'none';
+            });
+            
+            const targetDiv = document.getElementById('status-' + selectedStatus + '-options');
+            if (targetDiv) {
+                targetDiv.style.display = 'block';
+            }
+        }
+        
+        if (statusSelect) {
+            updateStatusDependentFields(); // Initial call
+            statusSelect.addEventListener('change', updateStatusDependentFields);
+        }
+        
+        // Dependent dropdown logic
+        const parentCategorySelect = document.getElementById('parent_category');
+        const subCategorySelect = document.getElementById('sub_category');
+        
+        function loadSubCategories(parentId, selectedSubCategoryId = null) {
+            if (!parentId) {
+                subCategorySelect.innerHTML = '<option value="">Select a parent category first</option>';
+                subCategorySelect.disabled = true;
+                return;
+            }
+            
+            subCategorySelect.disabled = true;
+            
+            // Fetch subcategories via AJAX
+            fetch(`/api/categories/${parentId}/subcategories`)
+                .then(response => response.json())
+                .then(data => {
+                    let options = '<option value="">Select a subcategory</option>';
+                    data.forEach(category => {
+                        const selected = selectedSubCategoryId && category.id == selectedSubCategoryId ? 'selected' : '';
+                        options += `<option value="${category.id}" ${selected}>${category.name}</option>`;
+                    });
+                    subCategorySelect.innerHTML = options;
+                    subCategorySelect.disabled = false;
+                })
+                .catch(error => {
+                    console.error('Error loading subcategories:', error);
+                    subCategorySelect.innerHTML = '<option value="">Error loading subcategories</option>';
+                });
+        }
+        
+        if (parentCategorySelect && subCategorySelect) {
+            // Initial load if parent category is selected
+            const initialParentId = parentCategorySelect.value;
+            const initialSubCategoryId = {{ old('category_id', ${{modelVariable}}->category_id ?? 'null') }};
+            
+            if (initialParentId) {
+                loadSubCategories(initialParentId, initialSubCategoryId);
+            }
+            
+            // Event listener for parent category changes
+            parentCategorySelect.addEventListener('change', function() {
+                loadSubCategories(this.value);
+            });
+        }
+        
+           // Preview functionality
+        const previewModal = document.getElementById('previewModal');
+        const previewContent = document.getElementById('preview-content');
+        
+        if (previewModal) {
+            previewModal.addEventListener('show.bs.modal', function() {
+                // Show loading spinner
+                previewContent.innerHTML = '';
+                document.querySelector('#previewModal .spinner-border').classList.remove('d-none');
+                
+                // Create form data from current form values
+                const formData = new FormData(document.getElementById('edit-form'));
+                formData.append('_preview', '1');
+                
+                // Sync Quill editor content if exists
+                if (typeof Quill !== 'undefined') {
+                    const editor = document.querySelector('.editor');
+                    const quill = Quill.find(editor);
+                    if (quill) {
+                        formData.append('description', quill.root.innerHTML);
+                    }
+                }
+                
+                // Fetch preview content via AJAX
+                fetch("{{ route('{{routeName}}.preview', ${{modelVariable}}) }}", {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                })
+                .then(response => response.ok ? response.text() : Promise.reject('Preview failed'))
+                .then(html => {
+                    document.querySelector('#previewModal .spinner-border').classList.add('d-none');
+                    previewContent.innerHTML = html;
+                    // Initialize any scripts in the preview content
+                    if (typeof feather !== 'undefined') {
+                        feather.replace({scope: '#preview-content'});
+                    }
+                })
+                .catch(error => {
+                    document.querySelector('#previewModal .spinner-border').classList.add('d-none');
+                    previewContent.innerHTML = `
+                        <div class="alert alert-danger">
+                            <div class="alert-body">
+                                <i data-feather="alert-circle"></i>
+                                <span>Error loading preview: ${error}</span>
+                            </div>
+                        </div>
+                    `;
+                    if (typeof feather !== 'undefined') {
+                        feather.replace({scope: '#preview-content'});
+                    }
+                });
+            });
+        }
+        
+        // Client-side validation
+        const form = document.getElementById('edit-form');
+        if (form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    // Find the first invalid element and switch to its tab
+                    const invalidElement = form.querySelector(':invalid');
+                    if (invalidElement) {
+                        const tabPane = invalidElement.closest('.tab-pane');
+                        if (tabPane) {
+                            const tabId = tabPane.id;
+                            const tab = document.querySelector(`a[href="#${tabId}"]`);
+                            if (tab) {
+                                bootstrap.Tab.getInstance(tab).show();
+                                invalidElement.focus();
+                            }
+                        }
+                    }
+                }
+                form.classList.add('was-validated');
+            });
+        }
+        
+        // Initialize Feather Icons
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+    });
+</script>
+@endpush
+
+@push('styles')
+<style>
+    /* File upload area styles */
+    .file-upload-area {
+        border: 2px dashed #ebe9f1;
+        border-radius: 0.428rem;
+        padding: 1rem;
+        background-color: #f8f8f8;
+    }
+    
+    /* Form validation styles */
+    .was-validated .form-control:invalid {
+        border-color: #ea5455;
+        padding-right: calc(1.45em + 0.876rem);
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23ea5455' viewBox='0 0 12 12'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23ea5455' stroke='none'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right calc(0.3625em + 0.219rem) center;
+        background-size: calc(0.725em + 0.438rem) calc(0.725em + 0.438rem);
+    }
+    
+    /* Timeline styles for version history */
+    .timeline {
+        position: relative;
+        padding-left: 1rem;
+    }
+    
+    .timeline:before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 10px;
+        bottom: 0;
+        width: 1px;
+        background: #ebe9f1;
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-left: 2rem;
+        padding-bottom: 1.5rem;
+    }
+    
+    .timeline-point {
+        position: absolute;
+        left: -5px;
+        top: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #7367f0;
+    }
+    
+    /* JSON Editor styles */
+    #json-editor-container {
+        min-height: 250px;
+    }
+    
+    /* Existing files display */
+    .existing-file-item {
+        position: relative;
+        border: 1px solid #ebe9f1;
+        border-radius: 0.428rem;
+        overflow: hidden;
+    }
+    
+    .existing-file-item:hover:before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Responsive styling */
+    @media (max-width: 767.98px) {
+        .content-header-right {
+            margin-top: 1rem;
+            text-align: left !important;
+        }
+        
+        .card-header {
+            flex-direction: column;
+            align-items: start !important;
+        }
+    }
+</style>
+@endpush

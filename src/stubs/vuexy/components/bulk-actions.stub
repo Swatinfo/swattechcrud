@@ -1,0 +1,986 @@
+{{-- 
+Component Class: SwatTech\Crud\View\Components\BulkActions
+
+Properties:
+    - id: string - Unique identifier for the bulk actions component (default: auto-generated)
+    - target: string - Target element ID (table) containing data (required)
+    - actions: array - Available bulk actions configuration
+    - confirmable: boolean - Whether actions require confirmation (default: true)
+    - buttonClass: string - CSS class for the main button (default: btn-outline-primary)
+    - buttonSize: string - Size of buttons (sm, md, lg) (default: sm)
+    - position: string - Button position (left, right) (default: left)
+    - labelSingular: string - Label for single item (default: 'item')
+    - labelPlural: string - Label for multiple items (default: 'items')
+    - showSelection: boolean - Whether to show selection count (default: true)
+    - showProgressBar: boolean - Show progress bar during processing (default: true)
+    - undoEnabled: boolean - Enable undo functionality (default: true)
+    - undoDuration: integer - Duration in seconds for undo availability (default: 10)
+    - showNotifications: boolean - Show notifications for results (default: true)
+    - transactionEnabled: boolean - Process actions in a transaction (default: true)
+    - abortOnError: boolean - Abort entire operation on first error (default: false)
+    - permissions: array - Permission requirements for actions
+    - containerClass: string - Additional CSS classes for container (default: '')
+    - keyboardShortcuts: boolean - Enable keyboard shortcuts (default: true)
+    - menuAlignment: string - Menu alignment (left, right) (default: left)
+--}}
+
+@props([
+    'id' => 'bulk-actions-'.uniqid(),
+    'target' => null,
+    'actions' => [],
+    'confirmable' => true,
+    'buttonClass' => 'btn-outline-primary',
+    'buttonSize' => 'sm',
+    'position' => 'left',
+    'labelSingular' => 'item',
+    'labelPlural' => 'items',
+    'showSelection' => true,
+    'showProgressBar' => true,
+    'undoEnabled' => true,
+    'undoDuration' => 10,
+    'showNotifications' => true,
+    'transactionEnabled' => true,
+    'abortOnError' => false,
+    'permissions' => [],
+    'containerClass' => '',
+    'keyboardShortcuts' => true,
+    'menuAlignment' => 'left'
+])
+
+@php
+    // Set button size class
+    $btnSizeClass = [
+        'sm' => 'btn-sm',
+        'md' => '',
+        'lg' => 'btn-lg'
+    ][$buttonSize] ?? 'btn-sm';
+    
+    // Check if any actions are provided
+    $hasActions = !empty($actions);
+    
+    // Check if target is set
+    if (!$target) {
+        $target = 'table'; // default target if none provided
+    }
+    
+    // Normalize actions if provided as string
+    if (is_string($actions)) {
+        $actionNames = explode(',', $actions);
+        $actions = [];
+        foreach ($actionNames as $name) {
+            $name = trim($name);
+            $actions[$name] = [
+                'name' => $name,
+                'label' => ucfirst($name),
+                'icon' => 'fa-' . $name,
+                'confirm' => $confirmable,
+                'permission' => null
+            ];
+        }
+    }
+    
+    // Add default actions if none provided
+    if (empty($actions)) {
+        $actions = [
+            'delete' => [
+                'name' => 'delete',
+                'label' => 'Delete',
+                'icon' => 'fa-trash',
+                'confirm' => true,
+                'confirmMessage' => 'Are you sure you want to delete the selected items?',
+                'permission' => 'delete'
+            ],
+            'export' => [
+                'name' => 'export',
+                'label' => 'Export',
+                'icon' => 'fa-download',
+                'confirm' => false,
+                'permission' => 'export'
+            ],
+            'activate' => [
+                'name' => 'activate',
+                'label' => 'Activate',
+                'icon' => 'fa-check-circle',
+                'confirm' => true,
+                'confirmMessage' => 'Are you sure you want to activate the selected items?',
+                'permission' => 'update'
+            ],
+            'deactivate' => [
+                'name' => 'deactivate',
+                'label' => 'Deactivate',
+                'icon' => 'fa-ban',
+                'confirm' => true,
+                'confirmMessage' => 'Are you sure you want to deactivate the selected items?',
+                'permission' => 'update'
+            ]
+        ];
+    }
+    
+    // Filter actions based on permissions
+    foreach ($actions as $key => $action) {
+        if (!empty($action['permission']) && !empty($permissions)) {
+            $requiredPermission = $action['permission'];
+            if (!in_array($requiredPermission, $permissions)) {
+                unset($actions[$key]);
+            }
+        }
+    }
+@endphp
+
+<div id="{{ $id }}" class="bulk-actions-component {{ $containerClass }}" 
+    data-target="{{ $target }}" 
+    data-undo-enabled="{{ $undoEnabled ? 'true' : 'false' }}"
+    data-undo-duration="{{ $undoDuration }}"
+    data-transaction="{{ $transactionEnabled ? 'true' : 'false' }}"
+    data-abort-on-error="{{ $abortOnError ? 'true' : 'false' }}"
+    role="toolbar"
+    aria-label="Bulk actions toolbar"
+>
+    @if($showSelection)
+    <div class="d-flex align-items-center">
+        <div class="selection-counter me-2">
+            <span class="selected-count">0</span> {{ $labelPlural }} selected
+        </div>
+    @endif
+
+    <div class="btn-group bulk-action-buttons {{ $position === 'right' ? 'ms-auto' : '' }}">
+        <button type="button" class="btn {{ $buttonClass }} {{ $btnSizeClass }} dropdown-toggle"
+            data-bs-toggle="dropdown" 
+            aria-expanded="false" 
+            aria-haspopup="true"
+            disabled="disabled"
+            id="{{ $id }}-dropdown"
+        >
+            <i class="fas fa-cog me-1" aria-hidden="true"></i> Bulk Actions
+        </button>
+        
+        <ul class="dropdown-menu dropdown-menu-{{ $menuAlignment === 'right' ? 'end' : 'start' }}" aria-labelledby="{{ $id }}-dropdown">
+            @foreach($actions as $action)
+                <li>
+                    <button type="button" 
+                        class="dropdown-item bulk-action" 
+                        data-action="{{ $action['name'] }}" 
+                        data-confirm="{{ $action['confirm'] ?? $confirmable ? 'true' : 'false' }}"
+                        data-confirm-message="{{ $action['confirmMessage'] ?? 'Are you sure you want to ' . $action['name'] . ' the selected items?' }}"
+                        aria-label="{{ $action['label'] }} selected items"
+                    >
+                        <i class="fas {{ $action['icon'] ?? 'fa-cog' }} me-1" aria-hidden="true"></i> 
+                        {{ $action['label'] }}
+                    </button>
+                </li>
+            @endforeach
+        </ul>
+    </div>
+
+    @if($showSelection)
+    </div>
+    @endif
+
+    @if($showProgressBar)
+    <div class="bulk-actions-progress mt-2 d-none">
+        <div class="progress">
+            <div class="progress-bar" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <div class="progress-status small text-muted mt-1">
+            <span class="status-text">Processing...</span>
+            <span class="status-count">0/0</span>
+        </div>
+    </div>
+    @endif
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="{{ $id }}-confirm-modal" tabindex="-1" aria-labelledby="{{ $id }}-confirm-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="{{ $id }}-confirm-modal-label">Confirm Action</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="{{ $id }}-confirm-message"></p>
+                <div class="alert alert-warning">
+                    This action will affect <strong><span class="selected-count">0</span> selected {{ $labelPlural }}</strong>.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="{{ $id }}-confirm-button">Proceed</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Modal -->
+<div class="modal fade" id="{{ $id }}-results-modal" tabindex="-1" aria-labelledby="{{ $id }}-results-modal-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="{{ $id }}-results-modal-label">Action Results</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="results-summary mb-3">
+                    <div class="alert alert-info">
+                        Action completed with <span class="success-count">0</span> successes and <span class="error-count">0</span> errors.
+                    </div>
+                </div>
+                <div id="{{ $id }}-results-container" class="results-container">
+                    <div class="results-section results-success mb-3 d-none">
+                        <h6 class="text-success">Successful Items</h6>
+                        <ul class="list-group success-list"></ul>
+                    </div>
+                    <div class="results-section results-error mb-3 d-none">
+                        <h6 class="text-danger">Failed Items</h6>
+                        <div class="alert alert-danger">
+                            <p>The following items failed processing:</p>
+                            <ul class="error-list"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                
+                <div class="undo-action-container" style="display: none;">
+                    <button type="button" class="btn btn-warning undo-action">
+                        <i class="fas fa-undo me-1" aria-hidden="true"></i> Undo (<span class="undo-countdown">10</span>)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@once
+    @push('scripts')
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize bulk action components
+        document.querySelectorAll('.bulk-actions-component').forEach(component => {
+            initBulkActions(component);
+        });
+        
+        /**
+         * Initialize the bulk actions functionality
+         */
+        function initBulkActions(component) {
+            const id = component.id;
+            const targetSelector = component.dataset.target;
+            const undoEnabled = component.dataset.undoEnabled === 'true';
+            const undoDuration = parseInt(component.dataset.undoDuration) || 10;
+            const useTransaction = component.dataset.transaction === 'true';
+            const abortOnError = component.dataset.abortOnError === 'true';
+            
+            // Cache DOM elements
+            const bulkActionButtons = component.querySelectorAll('.bulk-action');
+            const mainButton = component.querySelector('.dropdown-toggle');
+            const selectedCountElements = document.querySelectorAll('.selected-count');
+            const progressBar = component.querySelector('.bulk-actions-progress');
+            const progressBarEl = progressBar ? progressBar.querySelector('.progress-bar') : null;
+            const progressStatus = component.querySelector('.progress-status');
+            const statusText = component.querySelector('.status-text');
+            const statusCount = component.querySelector('.status-count');
+            
+            // Modal elements
+            const confirmModal = document.getElementById(`${id}-confirm-modal`);
+            const confirmMessage = document.getElementById(`${id}-confirm-message`);
+            const confirmButton = document.getElementById(`${id}-confirm-button`);
+            const resultsModal = document.getElementById(`${id}-results-modal`);
+            const resultsContainer = document.getElementById(`${id}-results-container`);
+            const successSection = resultsContainer ? resultsContainer.querySelector('.results-success') : null;
+            const errorSection = resultsContainer ? resultsContainer.querySelector('.results-error') : null;
+            const successList = successSection ? successSection.querySelector('.success-list') : null;
+            const errorList = errorSection ? errorSection.querySelector('.error-list') : null;
+            const successCount = document.querySelector('.success-count');
+            const errorCount = document.querySelector('.error-count');
+            const undoContainer = document.querySelector('.undo-action-container');
+            const undoButton = document.querySelector('.undo-action');
+            const undoCountdown = document.querySelector('.undo-countdown');
+            
+            // Target elements (rows to act on)
+            const target = document.querySelector(targetSelector);
+            if (!target) {
+                console.error(`Target element ${targetSelector} not found`);
+                return;
+            }
+            
+            // Store current action for confirmation flow
+            let currentAction = null;
+            let currentActionData = null;
+            let selectedItems = [];
+            let processedResults = {
+                success: [],
+                error: [],
+                undoToken: null,
+                action: null
+            };
+            let undoTimer = null;
+            
+            // Initialize event listeners
+            initializeEventListeners();
+            updateButtonState();
+            
+            /**
+             * Initialize all event listeners
+             */
+            function initializeEventListeners() {
+                // Listen for changes in checkboxes to update selection
+                target.addEventListener('change', function(e) {
+                    if (e.target && e.target.matches('input[type="checkbox"]')) {
+                        updateButtonState();
+                    }
+                });
+                
+                // Listen for click on bulk action buttons
+                bulkActionButtons.forEach(button => {
+                    button.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        
+                        const action = this.dataset.action;
+                        const requiresConfirm = this.dataset.confirm === 'true';
+                        const confirmMessageText = this.dataset.confirmMessage;
+                        
+                        // Store action data
+                        currentAction = action;
+                        currentActionData = {
+                            action: action,
+                            items: getSelectedIds()
+                        };
+                        
+                        if (requiresConfirm) {
+                            // Show confirmation modal
+                            if (confirmMessage) {
+                                confirmMessage.textContent = confirmMessageText;
+                            }
+                            
+                            const bsModal = new bootstrap.Modal(confirmModal);
+                            bsModal.show();
+                        } else {
+                            // Execute action immediately
+                            executeAction(currentActionData);
+                        }
+                    });
+                });
+                
+                // Confirm button event
+                if (confirmButton) {
+                    confirmButton.addEventListener('click', function() {
+                        const bsModal = bootstrap.Modal.getInstance(confirmModal);
+                        if (bsModal) {
+                            bsModal.hide();
+                        }
+                        
+                        // Execute the current action
+                        executeAction(currentActionData);
+                    });
+                }
+                
+                // Undo button event
+                if (undoButton) {
+                    undoButton.addEventListener('click', function() {
+                        executeUndo();
+                    });
+                }
+                
+                // Select all checkbox
+                const selectAllCheckbox = target.querySelector('input[type="checkbox"][data-select-all="true"]');
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.addEventListener('change', function() {
+                        const isChecked = this.checked;
+                        const checkboxes = target.querySelectorAll('input[type="checkbox"]:not([data-select-all="true"])');
+                        
+                        checkboxes.forEach(checkbox => {
+                            checkbox.checked = isChecked;
+                        });
+                        
+                        updateButtonState();
+                    });
+                }
+                
+                // Keyboard shortcuts
+                if ({{ $keyboardShortcuts ? 'true' : 'false' }}) {
+                    document.addEventListener('keydown', function(e) {
+                        // Alt + B to focus bulk actions dropdown
+                        if (e.altKey && e.key.toLowerCase() === 'b') {
+                            e.preventDefault();
+                            if (!mainButton.disabled) {
+                                mainButton.focus();
+                                mainButton.click();
+                            }
+                        }
+                        
+                        // Alt + U to trigger undo if available
+                        if (e.altKey && e.key.toLowerCase() === 'u') {
+                            e.preventDefault();
+                            if (undoContainer && undoContainer.style.display !== 'none') {
+                                undoButton.click();
+                            }
+                        }
+                    });
+                }
+            }
+            
+            /**
+             * Get IDs of selected items
+             */
+            function getSelectedIds() {
+                const selectedCheckboxes = target.querySelectorAll('input[type="checkbox"]:checked:not([data-select-all="true"])');
+                const ids = Array.from(selectedCheckboxes).map(checkbox => {
+                    // Try to get ID from the checkbox itself or from its closest row
+                    const id = checkbox.value || checkbox.dataset.id;
+                    if (id) return id;
+                    
+                    const row = checkbox.closest('tr[data-id]');
+                    return row ? row.dataset.id : null;
+                }).filter(id => id); // Remove any nulls
+                
+                return ids;
+            }
+            
+            /**
+             * Get item displays for selected items
+             */
+            function getSelectedItemDisplays() {
+                const selectedCheckboxes = target.querySelectorAll('input[type="checkbox"]:checked:not([data-select-all="true"])');
+                return Array.from(selectedCheckboxes).map(checkbox => {
+                    const row = checkbox.closest('tr, [data-item]');
+                    if (!row) return { id: checkbox.value || checkbox.dataset.id, display: 'Unknown item' };
+                    
+                    // Try to find a display name from various sources
+                    const nameColumn = row.querySelector('[data-column="name"], [data-column="title"], .item-name, .item-title');
+                    const display = nameColumn ? nameColumn.textContent.trim() : `Item ${row.dataset.id || ''}`;
+                    
+                    return {
+                        id: row.dataset.id || checkbox.value || checkbox.dataset.id,
+                        display: display
+                    };
+                });
+            }
+            
+            /**
+             * Update bulk action button state based on selection
+             */
+            function updateButtonState() {
+                const selectedIds = getSelectedIds();
+                selectedItems = getSelectedItemDisplays();
+                
+                // Update selected count display
+                selectedCountElements.forEach(el => {
+                    el.textContent = selectedIds.length;
+                });
+                
+                // Enable/disable the main button
+                mainButton.disabled = selectedIds.length === 0;
+                
+                // Update button text if needed
+                const selectedText = selectedIds.length === 1 ? '1 {{ $labelSingular }}' : `${selectedIds.length} {{ $labelPlural }}`;
+                mainButton.setAttribute('aria-label', `Bulk actions for ${selectedText} selected`);
+            }
+            
+            /**
+             * Execute the bulk action
+             */
+            function executeAction(actionData) {
+                if (!actionData || !actionData.items || actionData.items.length === 0) {
+                    showNotification('No items selected', 'Please select at least one item to perform this action.', 'warning');
+                    return;
+                }
+                
+                // Reset results
+                processedResults = {
+                    success: [],
+                    error: [],
+                    undoToken: null,
+                    action: actionData.action
+                };
+                
+                // Show progress if enabled
+                if (progressBar) {
+                    progressBar.classList.remove('d-none');
+                    progressBarEl.style.width = '0%';
+                    progressBarEl.setAttribute('aria-valuenow', '0');
+                    statusCount.textContent = `0/${actionData.items.length}`;
+                    statusText.textContent = `Processing ${actionData.action}...`;
+                }
+                
+                // Get CSRF token for API requests
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                
+                // Prepare the request
+                const formData = new FormData();
+                formData.append('action', actionData.action);
+                formData.append('ids', JSON.stringify(actionData.items));
+                formData.append('useTransaction', useTransaction ? '1' : '0');
+                formData.append('abortOnError', abortOnError ? '1' : '0');
+                
+                // Get API endpoint
+                const endpoint = target.dataset.bulkActionUrl || '/api/bulk-actions';
+                
+                // Execute action via AJAX
+                fetch(endpoint, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Handle successful response
+                    handleActionResult(data);
+                })
+                .catch(error => {
+                    console.error('Error executing bulk action:', error);
+                    
+                    // Handle error
+                    if (progressBar) {
+                        progressBar.classList.add('d-none');
+                    }
+                    
+                    showNotification('Error', 'An error occurred while processing the bulk action.', 'danger');
+                });
+                
+                /**
+                 * Simulate processing progress
+                 */
+                function simulateProgress(itemCount) {
+                    let processed = 0;
+                    const interval = setInterval(() => {
+                        processed++;
+                        const percent = Math.min(Math.round((processed / itemCount) * 100), 99);
+                        
+                        if (progressBarEl) {
+                            progressBarEl.style.width = `${percent}%`;
+                            progressBarEl.setAttribute('aria-valuenow', percent);
+                        }
+                        
+                        if (statusCount) {
+                            statusCount.textContent = `${processed}/${itemCount}`;
+                        }
+                        
+                        if (processed >= itemCount) {
+                            clearInterval(interval);
+                        }
+                    }, Math.max(50, Math.min(500, 2000 / itemCount)));
+                    
+                    return interval;
+                }
+                
+                // Start simulating progress
+                const progressInterval = simulateProgress(actionData.items.length);
+                
+                /**
+                 * Handle action result
+                 */
+                function handleActionResult(data) {
+                    clearInterval(progressInterval);
+                    
+                    // Hide progress bar
+                    if (progressBar) {
+                        // Set to 100% complete first
+                        progressBarEl.style.width = '100%';
+                        progressBarEl.setAttribute('aria-valuenow', '100');
+                        statusCount.textContent = `${actionData.items.length}/${actionData.items.length}`;
+                        statusText.textContent = 'Completed';
+                        
+                        // Then hide after a delay
+                        setTimeout(() => {
+                            progressBar.classList.add('d-none');
+                        }, 500);
+                    }
+                    
+                    if (!data || typeof data !== 'object') {
+                        showNotification('Error', 'Invalid response received from server.', 'danger');
+                        return;
+                    }
+                    
+                    // Handle successful response
+                    if (data.success) {
+                        processedResults.success = data.processed || [];
+                        processedResults.error = data.errors || [];
+                        processedResults.undoToken = data.undoToken || null;
+                        
+                        const successCount = processedResults.success.length;
+                        const errorCount = processedResults.error.length;
+                        
+                        // Update table rows if needed
+                        if (data.action === 'delete' && data.processed) {
+                            // Remove deleted rows
+                            data.processed.forEach(id => {
+                                const row = target.querySelector(`tr[data-id="${id}"], [data-item][data-id="${id}"]`);
+                                if (row) {
+                                    row.classList.add('fade-out');
+                                    setTimeout(() => {
+                                        row.remove();
+                                    }, 500);
+                                }
+                            });
+                        } else if (data.action === 'activate' || data.action === 'deactivate') {
+                            // Update status cells
+                            const newStatus = data.action === 'activate' ? 'active' : 'inactive';
+                            data.processed.forEach(id => {
+                                const row = target.querySelector(`tr[data-id="${id}"], [data-item][data-id="${id}"]`);
+                                if (row) {
+                                    const statusCell = row.querySelector('[data-column="status"], .status-cell');
+                                    if (statusCell) {
+                                        statusCell.textContent = newStatus;
+                                        statusCell.className = statusCell.className.replace(/badge-\w+/, '');
+                                        statusCell.classList.add(data.action === 'activate' ? 'badge-success' : 'badge-danger');
+                                    }
+                                }
+                            });
+                        }
+                        
+                        // Show the results modal
+                        showResultsModal(successCount, errorCount);
+                        
+                        // Show notification if enabled
+                        if ({{ $showNotifications ? 'true' : 'false' }}) {
+                            const messageType = errorCount > 0 ? 'warning' : 'success';
+                            let message = `${successCount} ${successCount === 1 ? '{{ $labelSingular }}' : '{{ $labelPlural }}'} processed successfully.`;
+                            if (errorCount > 0) {
+                                message += ` ${errorCount} ${errorCount === 1 ? 'item' : 'items'} failed.`;
+                            }
+                            
+                            showNotification('Action Completed', message, messageType);
+                        }
+                        
+                        // Uncheck all checkboxes
+                        const checkboxes = target.querySelectorAll('input[type="checkbox"]:checked');
+                        checkboxes.forEach(checkbox => {
+                            checkbox.checked = false;
+                        });
+                        
+                        // Update button state
+                        updateButtonState();
+                        
+                        // Trigger a custom event for further processing
+                        target.dispatchEvent(new CustomEvent('bulkActionCompleted', {
+                            detail: {
+                                action: data.action,
+                                success: processedResults.success,
+                                error: processedResults.error,
+                                undoToken: processedResults.undoToken
+                            }
+                        }));
+                    } else {
+                        // Handle error response
+                        showNotification('Error', data.message || 'Failed to process bulk action.', 'danger');
+                    }
+                }
+            }
+            
+            /**
+             * Show notification
+             */
+            function showNotification(title, message, type = 'info') {
+                // Use toast if available
+                if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+                    // Create toast container if it doesn't exist
+                    let toastContainer = document.querySelector('.toast-container');
+                    if (!toastContainer) {
+                        toastContainer = document.createElement('div');
+                        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+                        document.body.appendChild(toastContainer);
+                    }
+                    
+                    // Create toast element
+                    const toastEl = document.createElement('div');
+                    toastEl.className = `toast align-items-center text-white bg-${type} border-0`;
+                    toastEl.setAttribute('role', 'alert');
+                    toastEl.setAttribute('aria-live', 'assertive');
+                    toastEl.setAttribute('aria-atomic', 'true');
+                    
+                    toastEl.innerHTML = `
+                        <div class="d-flex">
+                            <div class="toast-body">
+                                <strong>${title}</strong><br>
+                                ${message}
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                    `;
+                    
+                    toastContainer.appendChild(toastEl);
+                    
+                    const toast = new bootstrap.Toast(toastEl, {
+                        autohide: true,
+                        delay: 5000
+                    });
+                    toast.show();
+                    
+                    // Remove toast after it's hidden
+                    toastEl.addEventListener('hidden.bs.toast', () => {
+                        toastEl.remove();
+                    });
+                } else {
+                    // Fallback to alert
+                    alert(`${title}: ${message}`);
+                }
+            }
+            
+            /**
+             * Show results modal with details
+             */
+            function showResultsModal(successCount, errorCount) {
+                if (!resultsModal) return;
+                
+                // Update count displays
+                if (successCount) {
+                    successCount.textContent = successCount;
+                }
+                if (errorCount) {
+                    errorCount.textContent = errorCount;
+                }
+                
+                // Clear previous results
+                if (successList) {
+                    successList.innerHTML = '';
+                }
+                if (errorList) {
+                    errorList.innerHTML = '';
+                }
+                
+                // Add success items
+                if (successSection && successList) {
+                    if (processedResults.success.length > 0) {
+                        successSection.classList.remove('d-none');
+                        processedResults.success.forEach(id => {
+                            // Find display name for this ID
+                            const item = selectedItems.find(item => item.id == id);
+                            const display = item ? item.display : `Item ${id}`;
+                            
+                            const li = document.createElement('li');
+                            li.className = 'list-group-item';
+                            li.innerHTML = `<i class="fas fa-check-circle text-success me-2"></i> ${display}</li>`;
+                            successList.appendChild(li);
+                        });
+                    } else {
+                        successSection.classList.add('d-none');
+                    }
+                }
+                
+                // Add error items
+                if (errorSection && errorList) {
+                    if (processedResults.error.length > 0) {
+                        errorSection.classList.remove('d-none');
+                        processedResults.error.forEach(error => {
+                            // Find display name for this ID
+                            const id = error.id || error;
+                            let item = selectedItems.find(item => item.id == id);
+                            const display = item ? item.display : `Item ${id}`;
+                            const message = error.message || 'Unknown error';
+                            
+                            const li = document.createElement('li');
+                            li.innerHTML = `<strong>${display}:</strong> ${message}`;
+                            errorList.appendChild(li);
+                        });
+                    } else {
+                        errorSection.classList.add('d-none');
+                    }
+                }
+                
+                // Show undo button if enabled and token is available
+                if (undoEnabled && undoContainer && processedResults.undoToken) {
+                    undoContainer.style.display = 'inline-block';
+                    
+                    // Set countdown
+                    if (undoCountdown) {
+                        undoCountdown.textContent = undoDuration;
+                    }
+                    
+                    // Start countdown timer
+                    startUndoCountdown();
+                } else if (undoContainer) {
+                    undoContainer.style.display = 'none';
+                }
+                
+                // Show the modal
+                const bsModal = new bootstrap.Modal(resultsModal);
+                bsModal.show();
+            }
+            
+            /**
+             * Start countdown for undo timeout
+             */
+            function startUndoCountdown() {
+                // Clear existing timer
+                if (undoTimer) {
+                    clearInterval(undoTimer);
+                }
+                
+                let secondsLeft = undoDuration;
+                
+                // Update countdown initially
+                if (undoCountdown) {
+                    undoCountdown.textContent = secondsLeft;
+                }
+                
+                // Start interval
+                undoTimer = setInterval(() => {
+                    secondsLeft--;
+                    
+                    if (undoCountdown) {
+                        undoCountdown.textContent = secondsLeft;
+                    }
+                    
+                    if (secondsLeft <= 0) {
+                        clearInterval(undoTimer);
+                        
+                        // Hide undo button when countdown reaches zero
+                        if (undoContainer) {
+                            undoContainer.style.display = 'none';
+                        }
+                        
+                        // Clear the undo token
+                        processedResults.undoToken = null;
+                    }
+                }, 1000);
+            }
+            
+            /**
+             * Execute undo action
+             */
+            function executeUndo() {
+                if (!processedResults.undoToken) {
+                    showNotification('Error', 'Undo token is not available or has expired.', 'danger');
+                    return;
+                }
+                
+                // Clear undo timer
+                if (undoTimer) {
+                    clearInterval(undoTimer);
+                }
+                
+                // Hide undo button
+                if (undoContainer) {
+                    undoContainer.style.display = 'none';
+                }
+                
+                // Get CSRF token for API requests
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                
+                // Prepare the request
+                const formData = new FormData();
+                formData.append('undoToken', processedResults.undoToken);
+                formData.append('action', processedResults.action);
+                
+                // Get API endpoint
+                const endpoint = target.dataset.bulkActionUndoUrl || '/api/bulk-actions/undo';
+                
+                // Show loading indicator
+                if (progressBar) {
+                    progressBar.classList.remove('d-none');
+                    progressBarEl.style.width = '50%';
+                    progressBarEl.setAttribute('aria-valuenow', '50');
+                    statusText.textContent = 'Undoing action...';
+                }
+                
+                // Execute undo via AJAX
+                fetch(endpoint, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Handle undo response
+                    if (data.success) {
+                        // Update UI based on the action that was undone
+                        handleUndoResult(data);
+                        
+                        // Show notification
+                        showNotification('Undo Successful', 'The action has been successfully reversed.', 'success');
+                    } else {
+                        showNotification('Undo Failed', data.message || 'Failed to undo the action.', 'danger');
+                    }
+                    
+                    // Hide progress bar
+                    if (progressBar) {
+                        progressBar.classList.add('d-none');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error executing undo action:', error);
+                    
+                    // Hide progress bar
+                    if (progressBar) {
+                        progressBar.classList.add('d-none');
+                    }
+                    
+                    showNotification('Error', 'An error occurred while processing the undo action.', 'danger');
+                });
+            }
+            
+            /**
+             * Handle the result of an undo operation
+             */
+            function handleUndoResult(data) {
+                // Check the original action type and respond accordingly
+                const originalAction = processedResults.action;
+                
+                if (originalAction === 'delete' && data.restoredItems) {
+                    // For undoing deletion, we need to refresh the table
+                    // This typically would be handled by a UI refresh or live-updating
+                    // The simplest approach is to reload the page
+                    if (typeof data.refresh !== 'undefined' && data.refresh) {
+                        window.location.reload();
+                        return;
+                    }
+                    
+                    // Alternatively, if the data includes the restored items' HTML, we could insert it
+                    if (data.itemsHtml) {
+                        // This assumes the server returns HTML for restored items
+                        const tempContainer = document.createElement('div');
+                        tempContainer.innerHTML = data.itemsHtml;
+                        
+                        const items = tempContainer.children;
+                        Array.from(items).forEach(item => {
+                            target.querySelector('tbody').appendChild(item);
+                        });
+                    }
+                } 
+                else if ((originalAction === 'activate' || originalAction === 'deactivate') && data.restoredItems) {
+                    // For status changes, update the status indicators
+                    const newStatus = originalAction === 'activate' ? 'inactive' : 'active';
+                    const statusClass = originalAction === 'activate' ? 'badge-danger' : 'badge-success';
+                    
+                    data.restoredItems.forEach(id => {
+                        const row = target.querySelector(`tr[data-id="${id}"], [data-item][data-id="${id}"]`);
+                        if (row) {
+                            const statusCell = row.querySelector('[data-column="status"], .status-cell');
+                            if (statusCell) {
+                                statusCell.textContent = newStatus;
+                                statusCell.className = statusCell.className.replace(/badge-\w+/, '');
+                                statusCell.classList.add(statusClass);
+                            }
+                        }
+                    });
+                }
+                
+                // Close the results modal if it's open
+                const openModal = bootstrap.Modal.getInstance(resultsModal);
+                if (openModal) {
+                    openModal.hide();
+                }
+                
+                // Trigger a custom event for further processing
+                target.dispatchEvent(new CustomEvent('bulkActionUndone', {
+                    detail: {
+                        action: originalAction,
+                        restoredItems: data.restoredItems || []
+                    }
+                }));
+            }
+        }
+    });
+    </script>
+    @endpush
+@endonce
