@@ -8,7 +8,7 @@ Collecting workspace information```markdown
 ![Tests](https://img.shields.io/github/workflow/status/swattech/crud/tests/main?label=tests)
 ![Code Quality](https://img.shields.io/github/workflow/status/swattech/crud/quality/main?label=code%20quality)
 
-SwatTech CRUD is an enterprise-grade CRUD generator for Laravel 12 with Vuexy theme integration. It analyzes your database schema and relationships, generating feature-rich models, controllers, services, repositories, views, and more with a single command.
+SwatTech CRUD is an enterprise-grade CRUD generator for Laravel 12 with theme integration. It analyzes your database schema and relationships, generating feature-rich models, controllers, services, repositories, views, and more with a single command.
 
 ## 📋 Features
 
