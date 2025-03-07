@@ -1,0 +1,126 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  tests:
+    name: PHP ${{ matrix.php }} - ${{ matrix.database }} - ${{ matrix.dependency-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: [8.1, 8.2, 8.3]
+        database: [mysql, pgsql]
+        dependency-version: [prefer-stable]
+        include:
+          - database: mysql
+            db-port: 3306
+          - database: pgsql
+            db-port: 5432
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: swattech_crud_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: swattech_crud_test
+        ports:
+          - 5432:5432
+        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, pdo_mysql, pdo_pgsql, bcmath, soap, intl, gd, exif, iconv
+          coverage: pcov
+
+      - name: Setup problem matchers
+        run: |
+          echo "::add-matcher::${{ runner.tool_cache }}/php.json"
+          echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.composer/cache/files
+          key: dependencies-php-${{ matrix.php }}-composer-${{ hashFiles('composer.json') }}
+          restore-keys: dependencies-php-${{ matrix.php }}-composer-
+
+      - name: Install dependencies
+        run: composer update --${{ matrix.dependency-version }} --prefer-dist --no-interaction --no-progress
+
+      - name: Configure database
+        run: |
+          if [[ "${{ matrix.database }}" == "mysql" ]]; then
+            cp .github/workflows/database.mysql.yml config/database.php
+          else
+            cp .github/workflows/database.pgsql.yml config/database.php
+          fi
+
+      - name: Execute tests
+        run: vendor/bin/phpunit --coverage-clover=coverage.xml
+        env:
+          DB_CONNECTION: ${{ matrix.database }}
+          DB_PORT: ${{ matrix.db-port }}
+          DB_DATABASE: swattech_crud_test
+          DB_USERNAME: ${{ matrix.database == 'mysql' ? 'root' : 'postgres' }}
+          DB_PASSWORD: ${{ matrix.database == 'mysql' ? '' : 'postgres' }}
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+          verbose: true
+
+      - name: Send notification on failure
+        if: failure()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: ci-failures
+          SLACK_COLOR: danger
+          SLACK_TITLE: Test Pipeline Failed
+          SLACK_MESSAGE: 'Tests failed on PHP ${{ matrix.php }} with ${{ matrix.database }}'
+          SLACK_FOOTER: 'SwatTech CRUD | GitHub Actions'
+
+  status-badge:
+    name: Generate Status Badge
+    runs-on: ubuntu-latest
+    needs: tests
+    if: success() && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Create status badge
+        uses: schneegans/dynamic-badges-action@v1.6.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: ${{ secrets.GIST_ID }}
+          filename: swattech-crud-tests.json
+          label: tests
+          message: passing
+          color: green

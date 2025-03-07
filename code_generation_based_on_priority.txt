@@ -8,13 +8,13 @@ I'll provide a comprehensive list of all files needed for the Laravel 12 Crud pa
 composer.json**
    - Purpose: Define package dependencies and autoloading
    - Code Requirements:
-     - Set package name to "vendor/swattech/crud"
+     - Set package name to "swattech/crud"
      - Require PHP 8.1+
      - Require Laravel 12 compatibility
      - Include dependencies: illuminate/support, illuminate/database, illuminate/console
      - Include Vuexy theme package dependency
      - Include dev dependencies: phpunit/phpunit, mockery/mockery, orchestra/testbench
-     - Define PSR-4 autoloading for Vendor\\Crud namespace pointing to src/
+     - Define PSR-4 autoloading for SwatTech\\Crud namespace pointing to src/
      - Configure Laravel auto-discovery for the service provider
      - Set license to MIT
      - Include keywords for package discovery

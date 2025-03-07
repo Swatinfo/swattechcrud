@@ -1,0 +1,262 @@
+name: Code Quality
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  code-style:
+    name: Code Style Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, bcmath, soap, intl
+          coverage: none
+          tools: php-cs-fixer
+      
+      - name: Cache PHP-CS-Fixer
+        uses: actions/cache@v3
+        with:
+          path: .php-cs-fixer.cache
+          key: php-cs-fixer-${{ hashFiles('.php-cs-fixer.dist.php') }}
+      
+      - name: Check code style
+        run: php-cs-fixer fix --dry-run --diff --verbose
+
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, bcmath, soap, intl
+          coverage: none
+          tools: phpstan
+      
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+      
+      - name: Run PHPStan
+        run: phpstan analyse src tests --level=5
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, bcmath, soap, intl
+          coverage: none
+          tools: psalm
+      
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+      
+      - name: Run Psalm
+        run: psalm --no-cache
+        
+  dependency-check:
+    name: Dependency Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, bcmath, soap, intl
+          coverage: none
+      
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+      
+      - name: Check for security vulnerabilities
+        run: composer audit
+        
+      - name: Check for outdated dependencies
+        run: composer outdated --direct
+
+  documentation:
+    name: Documentation Build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, bcmath, soap, intl
+      
+      - name: Setup Python for MkDocs
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          
+      - name: Install MkDocs
+        run: |
+          python -m pip install --upgrade pip
+          pip install mkdocs mkdocs-material mkdocs-minify-plugin
+      
+      - name: Build documentation
+        run: mkdocs build
+      
+      - name: Upload documentation artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: documentation
+          path: site/
+
+  deploy-docs:
+    name: Deploy Documentation
+    needs: documentation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Download documentation artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: documentation
+          path: site
+      
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: site
+          branch: gh-pages
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  release:
+    name: Release Process
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [code-style, static-analysis, security-scan, dependency-check, documentation]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Extract version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+      
+      - name: Generate changelog
+        id: changelog
+        uses: metcalfc/changelog-generator@v4.0.1
+        with:
+          myToken: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ env.VERSION }}
+          body: |
+            ## Changes in this release
+            ${{ steps.changelog.outputs.changelog }}
+          files: |
+            LICENSE
+            README.md
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  bump-version:
+    name: Bump Version
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [code-style, static-analysis, security-scan]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+      
+      - name: Get latest tag
+        id: latest_tag
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.1.0")
+          echo "LATEST_TAG=${LATEST_TAG}" >> $GITHUB_ENV
+      
+      - name: Create patch version
+        id: patch_version
+        run: |
+          LATEST_VERSION=${LATEST_TAG#v}
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_VERSION"
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+          echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+
+      - name: Update version in files
+        run: |
+          if [ -f "composer.json" ]; then
+            sed -i "s/\"version\": \".*\"/\"version\": \"${NEW_VERSION}\"/" composer.json
+          fi
+
+      - name: Commit version bump
+        run: |
+          git add composer.json
+          git commit -m "Bump version to ${NEW_VERSION}" || echo "No changes to commit"
+          git push origin main || echo "No changes to push"
+
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [code-style, static-analysis, security-scan, dependency-check]
+    if: failure()
+    
+    steps:
+      - name: Send Slack notification
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: code-quality-alerts
+          SLACK_COLOR: danger
+          SLACK_TITLE: Code Quality Check Failed
+          SLACK_MESSAGE: 'Code quality checks failed. Please check the GitHub Actions log.'
+          SLACK_FOOTER: 'SwatTech CRUD | GitHub Actions'

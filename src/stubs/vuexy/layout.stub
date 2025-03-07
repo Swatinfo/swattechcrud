@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" 
+      data-textdirection="ltr" 
+      class="{{ session('theme', 'light') }}-layout">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <title>@yield('title', config('app.name', 'Laravel')) - Admin Dashboard</title>
+    <meta name="description" content="@yield('meta_description', config('app.description', 'Admin Dashboard powered by SwatTech CRUD'))">
+    <meta name="keywords" content="@yield('meta_keywords', 'admin,dashboard,panel,laravel')">
+    <meta name="author" content="SwatTech">
+
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" href="{{ asset('assets/images/ico/apple-icon-120.png') }}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{ asset('assets/images/ico/favicon.ico') }}">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="{{ asset(config('crud.theme.assets.css.bootstrap', 'assets/compiled/css/bootstrap.css')) }}">
+    <link rel="stylesheet" href="{{ asset(config('crud.theme.assets.css.app', 'assets/compiled/css/app.css')) }}">
+    <link rel="stylesheet" href="{{ asset(config('crud.theme.assets.css.colors', 'assets/compiled/css/colors.css')) }}">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="{{ asset(config('crud.theme.assets.icons.path', 'assets/compiled/css/icons/feather-icons.css')) }}">
+
+    <!-- Dark theme CSS (loaded conditionally) -->
+    <link rel="stylesheet" href="{{ asset(config('crud.theme.assets.css.theme', 'assets/compiled/css/app-dark.css')) }}" id="dark-theme-stylesheet" disabled>
+
+    <!-- Page CSS -->
+    @stack('styles')
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}">
+</head>
+
+<body class="vertical-layout vertical-menu-modern navbar-floating footer-static" 
+      data-open="click"
+      data-menu="vertical-menu-modern"
+      data-col="2-columns">
+
+    <!-- BEGIN: Header-->
+    <nav class="header-navbar navbar navbar-expand-lg align-items-center floating-nav navbar-light navbar-shadow">
+        <div class="navbar-container d-flex content">
+            <!-- BEGIN: Navbar Toggle -->
+            <div class="bookmark-wrapper d-flex align-items-center">
+                <ul class="nav navbar-nav d-xl-none">
+                    <li class="nav-item">
+                        <a class="nav-link menu-toggle" href="javascript:void(0);">
+                            <i data-feather="menu" class="ficon"></i>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <!-- END: Navbar Toggle -->
+
+            <!-- BEGIN: Search -->
+            <div class="navbar-container d-flex content">
+                <div class="bookmark-wrapper d-flex align-items-center">
+                    <ul class="nav navbar-nav">
+                        <li class="nav-item d-none d-lg-block">
+                            <a class="nav-link nav-link-style theme-toggle">
+                                <i class="ficon" data-feather="moon"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <ul class="nav navbar-nav align-items-center ms-auto">
+                    <li class="nav-item">
+                        <div class="search-input-wrapper">
+                            <form action="{{ route('search') }}" method="GET" class="search-form">
+                                <div class="search-input-group">
+                                    <span class="search-input-icon">
+                                        <i data-feather="search"></i>
+                                    </span>
+                                    <input type="text" class="form-control search-input" name="q" placeholder="Search..." aria-label="Search">
+                                </div>
+                            </form>
+                        </div>
+                    </li>
+                    
+                    <!-- BEGIN: Notifications Dropdown -->
+                    <li class="nav-item dropdown dropdown-notification me-25">
+                        <a class="nav-link" href="javascript:void(0);" data-bs-toggle="dropdown">
+                            <i class="ficon" data-feather="bell"></i>
+                            <span class="badge rounded-pill bg-danger badge-up notification-count">{{ auth()->user()->unreadNotifications->count() }}</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-media dropdown-menu-end">
+                            <li class="dropdown-menu-header">
+                                <div class="dropdown-header d-flex">
+                                    <h4 class="notification-title mb-0 me-auto">Notifications</h4>
+                                    <div class="badge badge-light-primary">{{ auth()->user()->unreadNotifications->count() }} New</div>
+                                </div>
+                            </li>
+                            <li class="scrollable-container media-list">
+                                @foreach (auth()->user()->unreadNotifications->take(5) as $notification)
+                                    <a class="d-flex" href="{{ route('notifications.read', $notification->id) }}">
+                                        <div class="list-item d-flex align-items-start">
+                                            <div class="me-1">
+                                                <div class="avatar bg-light-{{ $notification->data['type'] ?? 'primary' }}">
+                                                    <div class="avatar-content">
+                                                        <i data-feather="{{ $notification->data['icon'] ?? 'bell' }}" class="avatar-icon"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="list-item-body flex-grow-1">
+                                                <p class="media-heading">{{ $notification->data['title'] ?? 'Notification' }}</p>
+                                                <small class="notification-text">{{ $notification->data['message'] ?? '' }}</small>
+                                                <small class="notification-time">{{ $notification->created_at->diffForHumans() }}</small>
+                                            </div>
+                                        </div>
+                                    </a>
+                                @endforeach
+                                
+                                @if(auth()->user()->unreadNotifications->count() == 0)
+                                    <div class="list-item d-flex align-items-center p-2">
+                                        <div class="w-100 text-center text-muted">
+                                            <p class="mb-0">No new notifications</p>
+                                        </div>
+                                    </div>
+                                @endif
+                            </li>
+                            <li class="dropdown-menu-footer">
+                                <a class="btn btn-primary w-100" href="{{ route('notifications.index') }}">Read all notifications</a>
+                            </li>
+                        </ul>
+                    </li>
+                    <!-- END: Notifications Dropdown -->
+
+                    <!-- BEGIN: User Dropdown -->
+                    <li class="nav-item dropdown dropdown-user">
+                        <a class="nav-link dropdown-toggle dropdown-user-link" id="dropdown-user" href="javascript:void(0);" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <div class="user-nav d-sm-flex d-none">
+                                <span class="user-name fw-bolder">{{ auth()->user()->name }}</span>
+                                <span class="user-status">{{ auth()->user()->role ?? 'User' }}</span>
+                            </div>
+                            <span class="avatar">
+                                <img class="round" src="{{ auth()->user()->avatar ?? asset('assets/images/avatars/default.png') }}" alt="avatar" height="40" width="40">
+                                <span class="avatar-status-online"></span>
+                            </span>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-user">
+                            <a class="dropdown-item" href="{{ route('profile.show') }}">
+                                <i class="me-50" data-feather="user"></i> Profile
+                            </a>
+                            <a class="dropdown-item" href="{{ route('settings') }}">
+                                <i class="me-50" data-feather="settings"></i> Settings
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{{ route('logout') }}" 
+                               onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                                <i class="me-50" data-feather="power"></i> Logout
+                            </a>
+                            <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
+                                @csrf
+                            </form>
+                        </div>
+                    </li>
+                    <!-- END: User Dropdown -->
+                </ul>
+            </div>
+            <!-- END: Search -->
+        </div>
+    </nav>
+    <!-- END: Header -->
+
+    <!-- BEGIN: Main Menu-->
+    <div class="main-menu menu-fixed menu-light menu-accordion menu-shadow" data-scroll-to-active="true">
+        <div class="navbar-header">
+            <ul class="nav navbar-nav flex-row">
+                <li class="nav-item me-auto">
+                    <a class="navbar-brand" href="{{ route('dashboard') }}">
+                        <span class="brand-logo">
+                            <img src="{{ asset('assets/images/logo/logo.svg') }}" alt="Logo">
+                        </span>
+                        <h2 class="brand-text">{{ config('app.name') }}</h2>
+                    </a>
+                </li>
+                <li class="nav-item nav-toggle">
+                    <a class="nav-link modern-nav-toggle pe-0" data-bs-toggle="collapse">
+                        <i class="d-block d-xl-none text-primary toggle-icon font-medium-4" data-feather="x"></i>
+                        <i class="d-none d-xl-block collapse-toggle-icon font-medium-4 text-primary" data-feather="disc" data-ticon="disc"></i>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div class="shadow-bottom"></div>
+        <div class="main-menu-content">
+            <ul class="navigation navigation-main" id="main-menu-navigation" data-menu="menu-navigation">
+                <!-- BEGIN: Navigation Items -->
+                <li class="{{ request()->routeIs('dashboard') ? 'active' : '' }} nav-item">
+                    <a class="d-flex align-items-center" href="{{ route('dashboard') }}">
+                        <i data-feather="home"></i>
+                        <span class="menu-title text-truncate">Dashboard</span>
+                    </a>
+                </li>
+                
+                <!-- Dynamic Menu Sections -->
+                @foreach(config('menu', []) as $section => $items)
+                    <li class="navigation-header">
+                        <span>{{ $section }}</span>
+                        <i data-feather="more-horizontal"></i>
+                    </li>
+                    
+                    @foreach($items as $item)
+                        @if(isset($item['permission']) && !auth()->user()->can($item['permission']))
+                            @continue
+                        @endif
+                        
+                        @if(isset($item['submenu']) && count($item['submenu']) > 0)
+                            <li class="nav-item has-sub {{ request()->routeIs($item['active'] ?? '') ? 'open' : '' }}">
+                                <a class="d-flex align-items-center" href="{{ $item['url'] ?? 'javascript:void(0);' }}">
+                                    <i data-feather="{{ $item['icon'] ?? 'circle' }}"></i>
+                                    <span class="menu-title text-truncate">{{ $item['title'] }}</span>
+                                    @if(isset($item['badge']))
+                                        <span class="badge badge-light-{{ $item['badge']['variant'] ?? 'primary' }} rounded-pill ms-auto me-1">{{ $item['badge']['text'] }}</span>
+                                    @endif
+                                </a>
+                                <ul class="menu-content">
+                                    @foreach($item['submenu'] as $submenu)
+                                        @if(isset($submenu['permission']) && !auth()->user()->can($submenu['permission']))
+                                            @continue
+                                        @endif
+                                        
+                                        <li class="{{ request()->routeIs($submenu['active'] ?? '') ? 'active' : '' }}">
+                                            <a class="d-flex align-items-center" href="{{ $submenu['url'] }}">
+                                                <i data-feather="circle"></i>
+                                                <span class="menu-item text-truncate">{{ $submenu['title'] }}</span>
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </li>
+                        @else
+                            <li class="{{ request()->routeIs($item['active'] ?? '') ? 'active' : '' }} nav-item">
+                                <a class="d-flex align-items-center" href="{{ $item['url'] }}">
+                                    <i data-feather="{{ $item['icon'] ?? 'circle' }}"></i>
+                                    <span class="menu-title text-truncate">{{ $item['title'] }}</span>
+                                    @if(isset($item['badge']))
+                                        <span class="badge badge-light-{{ $item['badge']['variant'] ?? 'primary' }} rounded-pill ms-auto me-1">{{ $item['badge']['text'] }}</span>
+                                    @endif
+                                </a>
+                            </li>
+                        @endif
+                    @endforeach
+                @endforeach
+                <!-- END: Navigation Items -->
+            </ul>
+        </div>
+    </div>
+    <!-- END: Main Menu-->
+
+    <!-- BEGIN: Content Wrapper-->
+    <div class="app-content content">
+        <div class="content-overlay"></div>
+        <div class="header-navbar-shadow"></div>
+        
+        <!-- BEGIN: Flash Message -->
+        @if(session('success') || session('error') || session('warning') || session('info'))
+            <div class="content-header row">
+                <div class="content-header-left col-12 mb-2">
+                    @if(session('success'))
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <div class="alert-body">
+                                <i data-feather="check-circle" class="me-50"></i>
+                                <span>{{ session('success') }}</span>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    @if(session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <div class="alert-body">
+                                <i data-feather="alert-circle" class="me-50"></i>
+                                <span>{{ session('error') }}</span>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    @if(session('warning'))
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                            <div class="alert-body">
+                                <i data-feather="alert-triangle" class="me-50"></i>
+                                <span>{{ session('warning') }}</span>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    @if(session('info'))
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            <div class="alert-body">
+                                <i data-feather="info" class="me-50"></i>
+                                <span>{{ session('info') }}</span>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        @endif
+        <!-- END: Flash Message -->
+
+        <!-- BEGIN: Content -->
+        <div class="content-wrapper">
+            @yield('content')
+        </div>
+        <!-- END: Content -->
+    </div>
+    <!-- END: Content Wrapper -->
+
+    <!-- BEGIN: Footer -->
+    <footer class="footer footer-static footer-light">
+        <p class="clearfix mb-0">
+            <span class="float-md-start d-block d-md-inline-block mt-25">
+                COPYRIGHT &copy; {{ date('Y') }} 
+                <a href="https://swatinfosystem.com" class="ms-25" target="_blank">Swat Info System</a>
+                <span class="d-none d-sm-inline-block">- All rights Reserved</span>
+            </span>
+            <span class="float-md-end d-none d-md-block">
+                Hand-crafted & Made with <i data-feather="heart"></i>
+            </span>
+        </p>
+    </footer>
+    <button class="btn btn-primary btn-icon scroll-top" type="button"><i data-feather="arrow-up"></i></button>
+    <!-- END: Footer -->
+
+    <!-- BEGIN: Modal Container -->
+    <div id="modal-container">
+        <!-- Dynamic modals will be appended here -->
+    </div>
+    <!-- END: Modal Container -->
+
+    <!-- Core JS -->
+    <script src="{{ asset(config('crud.theme.assets.js.bootstrap', 'assets/compiled/js/bootstrap.js')) }}" defer></script>
+    <script src="{{ asset(config('crud.theme.assets.js.app', 'assets/compiled/js/app.js')) }}" defer></script>
+    <script src="{{ asset(config('crud.theme.assets.js.components', 'assets/compiled/js/components.js')) }}" defer></script>
+
+    <!-- Feather Icons JS -->
+    <script src="{{ asset('assets/vendors/js/feather-icons/feather.min.js') }}" defer></script>
+
+    <!-- Vendor JS -->
+    @stack('vendor-scripts')
+
+    <!-- Page JS -->
+    @stack('scripts')
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Feather Icons
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+            
+            // Theme toggler functionality
+            const themeToggler = document.querySelector('.theme-toggle');
+            if (themeToggler) {
+                themeToggler.addEventListener('click', function() {
+                    const html = document.querySelector('html');
+                    const isDark = html.classList.contains('dark-layout');
+                    const themeStylesheet = document.getElementById('dark-theme-stylesheet');
+                    
+                    if (isDark) {
+                        // Switch to light theme
+                        html.classList.remove('dark-layout');
+                        html.classList.add('light-layout');
+                        themeStylesheet.disabled = true;
+                        
+                        // Update icon
+                        const icon = this.querySelector('i');
+                        icon.setAttribute('data-feather', 'moon');
+                        
+                        // Save preference
+                        fetch("{{ route('theme.toggle') }}", {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            },
+                            body: JSON.stringify({ theme: 'light' })
+                        });
+                    } else {
+                        // Switch to dark theme
+                        html.classList.remove('light-layout');
+                        html.classList.add('dark-layout');
+                        themeStylesheet.disabled = false;
+                        
+                        // Update icon
+                        const icon = this.querySelector('i');
+                        icon.setAttribute('data-feather', 'sun');
+                        
+                        // Save preference
+                        fetch("{{ route('theme.toggle') }}", {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            },
+                            body: JSON.stringify({ theme: 'dark' })
+                        });
+                    }
+                    
+                    // Re-initialize feather icons
+                    if (typeof feather !== 'undefined') {
+                        feather.replace();
+                    }
+                });
+            }
+            
+            // Mobile menu toggle
+            const menuToggle = document.querySelector('.menu-toggle');
+            if (menuToggle) {
+                menuToggle.addEventListener('click', function() {
+                    document.querySelector('body').classList.toggle('menu-open');
+                });
+            }
+        });
+    </script>
+</body>
+</html>
