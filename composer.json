@@ -1,6 +1,6 @@
 {
     "name": "swattech/crud",
-    "description": "Enterprise-grade Crud generator for Laravel 12 with Vuexy theme integration",
+    "description": "Enterprise-grade Crud generator for Laravel 12 with theme integration",
     "type": "library",
     "keywords": [
         "laravel",
