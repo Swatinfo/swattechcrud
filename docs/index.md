@@ -189,7 +189,7 @@ Contributions are welcome! Please check out our [contribution guide](https://git
 
 ### Support
 
-For premium support, reach out to [support@swattech.com](mailto:support@swattech.com).
+For premium support, reach out to [info@swatinfosystem.com](mailto:info@swatinfosystem.com).
 
 ### License
 
