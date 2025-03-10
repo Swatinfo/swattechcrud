@@ -133,7 +133,7 @@ class RequestGenerator implements GeneratorInterface
      *
      * @return string The request file path
      */
-    public function getPath(): string
+    public function getPath(string $path = ""): string
     {
         return base_path(Config::get('crud.paths.requests', 'app/Http/Requests'));
     }
@@ -143,7 +143,7 @@ class RequestGenerator implements GeneratorInterface
      *
      * @return string The stub template content
      */
-    public function getStub(): string
+    public function getStub(string $view = ""): string
     {
         $customStubPath = resource_path('stubs/crud/request.stub');
 
@@ -274,7 +274,7 @@ class RequestGenerator implements GeneratorInterface
     {
         $rules = [];
         $primaryKey = $this->databaseAnalyzer->getPrimaryKey($table);
-        
+
         foreach ($columns as $column) {
             // Skip primary key and timestamps
             if ($column['name'] == $primaryKey || in_array($column['name'], ['created_at', 'updated_at', 'deleted_at'])) {
@@ -282,27 +282,27 @@ class RequestGenerator implements GeneratorInterface
             }
 
             $columnRules = $this->generateColumnRules($column, $action, $table);
-            
+
             if (!empty($columnRules)) {
                 $rules[$column['name']] = $columnRules;
             }
         }
-        
+
         // Add custom rules from options
         if (isset($this->options['custom_rules']) && is_array($this->options['custom_rules'])) {
             foreach ($this->options['custom_rules'] as $field => $customRule) {
                 if (!isset($rules[$field])) {
                     $rules[$field] = [];
                 }
-                
+
                 if (is_string($customRule)) {
                     $customRule = explode('|', $customRule);
                 }
-                
+
                 $rules[$field] = array_merge($rules[$field], $customRule);
             }
         }
-        
+
         // Format rules for output
         $formattedRules = "    /**
      * Get the validation rules that apply to the request.
@@ -342,7 +342,7 @@ class RequestGenerator implements GeneratorInterface
         $name = $column['name'];
         $type = $column['type'];
         $nullable = !$column['required'];
-        
+
         // Required rule (not for update actions where fields may be optional)
         if (!$nullable && $action !== 'update') {
             $rules[] = 'required';
@@ -351,7 +351,7 @@ class RequestGenerator implements GeneratorInterface
         } else {
             $rules[] = 'nullable';
         }
-        
+
         // Type-based rules
         switch ($type) {
             case 'string':
@@ -360,45 +360,45 @@ class RequestGenerator implements GeneratorInterface
                     $rules[] = 'max:' . $column['length'];
                 }
                 break;
-                
+
             case 'integer':
                 $rules[] = 'integer';
                 break;
-                
+
             case 'decimal':
             case 'float':
                 $rules[] = 'numeric';
                 break;
-                
+
             case 'boolean':
                 $rules[] = 'boolean';
                 break;
-                
+
             case 'date':
                 $rules[] = 'date';
                 break;
-                
+
             case 'datetime':
                 $rules[] = 'date_format:Y-m-d H:i:s';
                 break;
-                
+
             case 'time':
                 $rules[] = 'date_format:H:i:s';
                 break;
-                
+
             case 'email':
                 $rules[] = 'email';
                 break;
-                
+
             case 'url':
                 $rules[] = 'url';
                 break;
-                
+
             case 'json':
                 $rules[] = 'json';
                 break;
         }
-        
+
         // Unique rule for store or conditionally for update
         if (isset($column['unique']) && $column['unique']) {
             if ($action === 'store') {
@@ -407,7 +407,7 @@ class RequestGenerator implements GeneratorInterface
                 $rules[] = 'unique:' . $table . ',' . $name . ',{$this->route()->parameter("id")}';
             }
         }
-        
+
         return $rules;
     }
 
@@ -422,7 +422,7 @@ class RequestGenerator implements GeneratorInterface
         if (!($this->options['generate_custom_messages'] ?? false)) {
             return '';
         }
-        
+
         return "    /**
      * Get custom messages for validator errors.
      *
@@ -449,7 +449,7 @@ class RequestGenerator implements GeneratorInterface
         if (!($this->options['use_custom_validators'] ?? false)) {
             return '';
         }
-        
+
         return "    /**
      * Configure the validator instance.
      *
@@ -479,7 +479,7 @@ class RequestGenerator implements GeneratorInterface
         if (!($this->options['use_custom_attributes'] ?? false)) {
             return '';
         }
-        
+
         $attributes = "    /**
      * Get custom attributes for validator errors.
      *
@@ -495,10 +495,10 @@ class RequestGenerator implements GeneratorInterface
             $label = $this->stringHelper->generateHumanReadableLabel($name);
             $attributes .= "            '{$name}' => '{$label}'," . PHP_EOL;
         }
-        
+
         $attributes .= "        ];
     }";
-        
+
         return $attributes;
     }
 
@@ -512,7 +512,7 @@ class RequestGenerator implements GeneratorInterface
         if (!($this->options['use_after_validation_hooks'] ?? false)) {
             return '';
         }
-        
+
         return "    /**
      * Handle a passed validation attempt.
      *
@@ -535,7 +535,7 @@ class RequestGenerator implements GeneratorInterface
         if (!($this->options['use_prepare_validation'] ?? false)) {
             return '';
         }
-        
+
         return "    /**
      * Prepare the data for validation.
      *
@@ -561,7 +561,7 @@ class RequestGenerator implements GeneratorInterface
         if (!($this->options['use_sanitization'] ?? false)) {
             return '';
         }
-        
+
         return "    /**
      * Sanitize input before validation.
      *
@@ -592,14 +592,14 @@ class RequestGenerator implements GeneratorInterface
         if (empty($complexRules)) {
             return '';
         }
-        
+
         $ruleCode = "";
-        
+
         foreach ($complexRules as $ruleName => $ruleConfig) {
             $ruleCode .= "    /**
      * Get the {$ruleName} rule instance.
      *
-     * @return \Illuminate\Validation\Rules\{$ruleConfig['type']}
+     * @return \Illuminate\Validation\Rules\Rule
      */
     protected function {$ruleName}()
     {
@@ -607,7 +607,7 @@ class RequestGenerator implements GeneratorInterface
     }
 ";
         }
-        
+
         return $ruleCode;
     }
 
@@ -622,23 +622,56 @@ class RequestGenerator implements GeneratorInterface
         $imports = [
             'Illuminate\Foundation\Http\FormRequest',
         ];
-        
+
         if ($this->options['use_gate_based_auth'] ?? true) {
             $imports[] = 'Illuminate\Support\Facades\Gate';
         }
-        
+
         if (($this->options['use_prepare_validation'] ?? false) && str_contains($this->generatePrepareForValidationMethod(), 'Str::slug')) {
             $imports[] = 'Illuminate\Support\Str';
         }
-        
+
         $imports = array_unique($imports);
         sort($imports);
-        
+
         $importStatements = '';
         foreach ($imports as $import) {
             $importStatements .= "use {$import};\n";
         }
-        
+
         return $importStatements;
+    }
+
+
+    /**
+     * Set configuration options for the generator.
+     *
+     * @param array $options Configuration options
+     * @return self Returns the generator instance for method chaining
+     */
+    public function setOptions(array $options): self
+    {
+        $this->options = array_merge($this->options ?? [], $options);
+        return $this;
+    }
+
+    /**
+     * Get a list of all generated file paths.
+     *
+     * @return array List of generated file paths
+     */
+    public function getGeneratedFiles(): array
+    {
+        return $this->generatedFiles ?? [];
+    }
+
+    /**
+     * Determine if the generator supports customization.
+     *
+     * @return bool True if the generator supports customization
+     */
+    public function supportsCustomization(): bool
+    {
+        return true;
     }
 }

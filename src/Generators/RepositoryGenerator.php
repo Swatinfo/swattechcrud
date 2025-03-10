@@ -93,7 +93,7 @@ class RepositoryGenerator implements GeneratorInterface
      * @param string $table The database table name
      * @return string The repository class name
      */
-    public function getClassName(string $table): string
+    public function getClassName(string $table, string $action = ""): string
     {
         $modelName = Str::studly(Str::singular($table));
         return $modelName . 'Repository';
@@ -114,7 +114,7 @@ class RepositoryGenerator implements GeneratorInterface
      *
      * @return string The repository file path
      */
-    public function getPath(): string
+    public function getPath(string $path = ""): string
     {
         return base_path(Config::get('crud.paths.repositories', 'app/Repositories'));
     }
@@ -151,7 +151,7 @@ class RepositoryGenerator implements GeneratorInterface
         $namespace = $this->getNamespace();
         $modelClass = $this->getModelClass($table);
         $modelNamespace = Config::get('crud.namespaces.models', 'App\\Models');
-        $stub = $this->getStub();
+        $stub = $this->getStub("implementation");
 
         // Setup model reference
         $modelReference = $this->setupModelReference("{$modelNamespace}\\{$modelClass}");
@@ -1178,5 +1178,37 @@ class RepositoryGenerator implements GeneratorInterface
              * @return bool
              */
             public function clearCache(): bool;";
+    }
+
+      /**
+     * Set configuration options for the generator.
+     *
+     * @param array $options Configuration options
+     * @return self Returns the generator instance for method chaining
+     */
+    public function setOptions(array $options): self
+    {
+        $this->options = array_merge($this->options ?? [], $options);
+        return $this;
+    }
+
+    /**
+     * Get a list of all generated file paths.
+     *
+     * @return array List of generated file paths
+     */
+    public function getGeneratedFiles(): array
+    {
+        return $this->generatedFiles ?? [];
+    }
+
+    /**
+     * Determine if the generator supports customization.
+     *
+     * @return bool True if the generator supports customization
+     */
+    public function supportsCustomization(): bool
+    {
+        return true;
     }
 }

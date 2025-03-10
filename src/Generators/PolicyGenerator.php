@@ -88,7 +88,7 @@ class PolicyGenerator implements GeneratorInterface
      * @param string $table The database table name
      * @return string The policy class name
      */
-    public function getClassName(string $table): string
+    public function getClassName(string $table, string $action = ""): string
     {
         $modelName = Str::studly(Str::singular($table));
         return $modelName . 'Policy';
@@ -109,7 +109,7 @@ class PolicyGenerator implements GeneratorInterface
      *
      * @return string The policy file path
      */
-    public function getPath(): string
+    public function getPath(string $path = ""): string
     {
         return base_path(Config::get('crud.paths.policies', 'app/Policies'));
     }
@@ -119,7 +119,7 @@ class PolicyGenerator implements GeneratorInterface
      *
      * @return string The stub template content
      */
-    public function getStub(): string
+    public function getStub(string $view): string
     {
         $customStubPath = resource_path('stubs/crud/policy.stub');
 
@@ -172,7 +172,7 @@ class PolicyGenerator implements GeneratorInterface
         $modelClass = Str::studly(Str::singular($table));
         $modelNamespace = Config::get('crud.namespaces.models', 'App\\Models');
         $userClass = Config::get('auth.providers.users.model', 'App\\Models\\User');
-        $stub = $this->getStub();
+        $stub = $this->getStub("");
 
         // Generate authorization methods
         $authMethods = $this->generateAuthorizationMethods();
@@ -745,5 +745,37 @@ class {$className} extends {$baseClassName}
     
     // Override other methods as needed for {$resourceType}-specific behavior
 }";
+    }
+
+    /**
+     * Set configuration options for the generator.
+     *
+     * @param array $options Configuration options
+     * @return self Returns the generator instance for method chaining
+     */
+    public function setOptions(array $options): self
+    {
+        $this->options = array_merge($this->options, $options);
+        return $this;
+    }
+
+    /**
+     * Get a list of all generated file paths.
+     *
+     * @return array List of generated file paths
+     */
+    public function getGeneratedFiles(): array
+    {
+        return $this->generatedFiles;
+    }
+
+    /**
+     * Determine if the generator supports customization.
+     *
+     * @return bool True if the generator supports customization
+     */
+    public function supportsCustomization(): bool
+    {
+        return true;
     }
 }

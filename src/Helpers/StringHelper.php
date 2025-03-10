@@ -209,4 +209,29 @@ class StringHelper
         // Convert all line endings to LF
         return str_replace(["\r\n", "\r"], "\n", $content);
     }
+    /**
+     * Convert a string to a valid PHP variable name.
+     * 
+     * Example: "User Profile" becomes "userProfile"
+     * Example: "blog-post" becomes "blogPost"
+     * Example: "API_KEY" becomes "apiKey"
+     *
+     * @param string $value The string to convert
+     * @return string The variable name
+     */
+    public static function getVariableName(string $value): string
+    {
+        // Remove any characters that aren't alphanumeric or underscores
+        $value = preg_replace('/[^a-zA-Z0-9_\s-]/', '', $value);
+
+        // Convert to camelCase
+        $value = self::camelCase($value);
+
+        // Ensure the variable name starts with a letter or underscore
+        if (!empty($value) && preg_match('/^[0-9]/', $value)) {
+            $value = '_' . $value;
+        }
+
+        return $value;
+    }
 }

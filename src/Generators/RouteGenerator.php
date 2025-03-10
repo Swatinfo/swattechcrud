@@ -101,7 +101,7 @@ class RouteGenerator implements GeneratorInterface
     {
         $filePath = $this->getPath($type);
         $routeContent = $this->buildRoutes($table, $type, $options);
-        
+
         // Check if file exists
         if (file_exists($filePath)) {
             // Don't duplicate routes if they already exist
@@ -117,13 +117,13 @@ class RouteGenerator implements GeneratorInterface
             // Create the file with a basic structure and the routes
             $stub = $this->getStub($type);
             $content = str_replace('{{routes}}', $routeContent, $stub);
-            
+
             // Create directory if it doesn't exist
             $directory = dirname($filePath);
             if (!is_dir($directory)) {
                 mkdir($directory, 0755, true);
             }
-            
+
             file_put_contents($filePath, $content);
         }
 
@@ -176,7 +176,7 @@ class RouteGenerator implements GeneratorInterface
     public function buildRoutes(string $table, string $type, array $options): string
     {
         $routeContent = "// {$table} routes\n";
-        
+
         // Setup route groups if needed
         $groupStart = $this->createRouteGroups($options, $type);
         if (!empty($groupStart)) {
@@ -192,7 +192,7 @@ class RouteGenerator implements GeneratorInterface
             $controllerNamespace = $this->controllerGenerator->getNamespace();
         }
         $controllerFQCN = $controllerNamespace . '\\' . $controllerClass;
-        
+
         // Generate resourceful routes
         $resourceRoutes = $this->generateResourcefulRoutes($table, $controllerFQCN);
         $routeContent .= $resourceRoutes;
@@ -227,7 +227,7 @@ class RouteGenerator implements GeneratorInterface
     {
         $resourceName = Str::kebab(Str::plural($table));
         $modelVariable = Str::camel(Str::singular($table));
-        
+
         // Setup route model binding if enabled
         $routeModelBinding = '';
         if ($this->options['use_route_model_binding'] ?? true) {
@@ -235,24 +235,24 @@ class RouteGenerator implements GeneratorInterface
             $modelNamespace = Config::get('crud.namespaces.models', 'App\\Models');
             $routeModelBinding = "->whereNumber('{$modelVariable}')";
         }
-        
+
         // Determine if we should use API resource naming
         $apiResource = (isset($this->options['route_type']) && $this->options['route_type'] === 'api');
         $routeMethod = $apiResource ? 'apiResource' : 'resource';
-        
+
         // Generate route name if needed
         $routeNaming = '';
         if ($this->options['use_route_naming'] ?? true) {
             $routeNaming = "->name('{$resourceName}')";
         }
-        
+
         // Determine route methods to exclude
         $excludeMethods = '';
         if (isset($this->options['exclude_methods']) && !empty($this->options['exclude_methods'])) {
             $methods = array_map(function ($method) {
                 return "'{$method}'";
             }, $this->options['exclude_methods']);
-            
+
             $excludeMethods = "->except([" . implode(', ', $methods) . "])";
         }
 
@@ -272,16 +272,16 @@ class RouteGenerator implements GeneratorInterface
         $routeContent = '';
         $parentResource = Str::kebab(Str::plural($table));
         $parentVariable = Str::camel(Str::singular($table));
-        
+
         foreach ($relationships as $relation => $config) {
             if (!isset($config['type']) || !isset($config['table'])) {
                 continue;
             }
-            
+
             $childTable = $config['table'];
             $childResource = Str::kebab(Str::plural($childTable));
             $childVariable = Str::camel(Str::singular($childTable));
-            
+
             // Generate controller name for the child resource
             $controllerClass = $this->controllerGenerator->getClassName($childTable);
             if ($type === 'api') {
@@ -291,26 +291,26 @@ class RouteGenerator implements GeneratorInterface
                 $controllerNamespace = $this->controllerGenerator->getNamespace();
             }
             $controllerFQCN = $controllerNamespace . '\\' . $controllerClass;
-            
+
             // Determine if we should use API resource naming
             $apiResource = ($type === 'api');
             $routeMethod = $apiResource ? 'apiResource' : 'resource';
-            
+
             // Route model binding
             $routeModelBinding = '';
             if ($this->options['use_route_model_binding'] ?? true) {
                 $routeModelBinding = "->whereNumber('{$parentVariable}')->whereNumber('{$childVariable}')";
             }
-            
+
             // Route naming
             $routeNaming = '';
             if ($this->options['use_route_naming'] ?? true) {
                 $routeNaming = "->name('{$parentResource}.{$childResource}')";
             }
-            
+
             $routeContent .= "\nRoute::{$routeMethod}('{$parentResource}/{{{$parentVariable}}}/{$childResource}', {$controllerFQCN}::class){$routeModelBinding}{$routeNaming};";
         }
-        
+
         return $routeContent;
     }
 
@@ -325,12 +325,12 @@ class RouteGenerator implements GeneratorInterface
         if (!isset($options['api_versions']) || empty($options['api_versions'])) {
             return '';
         }
-        
+
         $versionGroups = '';
         foreach ($options['api_versions'] as $version) {
             $versionGroups .= "Route::prefix('v{$version}')->group(function () {\n    // Version {$version} routes\n    {{routes}}\n});\n\n";
         }
-        
+
         return $versionGroups;
     }
 
@@ -345,7 +345,7 @@ class RouteGenerator implements GeneratorInterface
         $modelVariable = Str::camel(Str::singular($table));
         $modelClass = Str::studly(Str::singular($table));
         $modelNamespace = Config::get('crud.namespaces.models', 'App\\Models');
-        
+
         return "->whereNumber('{$modelVariable}')";
     }
 
@@ -360,7 +360,7 @@ class RouteGenerator implements GeneratorInterface
     {
         $resourceName = Str::kebab(Str::plural($table));
         $prefix = $type === 'api' ? 'api.' : '';
-        
+
         return "->name('{$prefix}{$resourceName}')";
     }
 
@@ -376,11 +376,11 @@ class RouteGenerator implements GeneratorInterface
         if (empty($middleware)) {
             return '';
         }
-        
+
         $middlewareList = array_map(function ($middleware) {
             return "'{$middleware}'";
         }, $middleware);
-        
+
         return "->middleware([" . implode(', ', $middlewareList) . "])";
     }
 
@@ -394,7 +394,7 @@ class RouteGenerator implements GeneratorInterface
     public function createRouteGroups(array $options, string $type = 'web'): string
     {
         $groupStart = '';
-        
+
         // Middleware group
         if (isset($options['middleware']) && !empty($options['middleware'])) {
             $middleware = $this->assignMiddleware($type, $options['middleware']);
@@ -402,7 +402,7 @@ class RouteGenerator implements GeneratorInterface
                 return "'{$middleware}'";
             }, $options['middleware'])) . "])->group(function () {\n";
         }
-        
+
         // Prefix group
         if (isset($options['prefix']) && !empty($options['prefix'])) {
             $prefix = $options['prefix'];
@@ -413,7 +413,7 @@ class RouteGenerator implements GeneratorInterface
                 $groupStart .= "->prefix('{$prefix}')->group(function () {\n";
             }
         }
-        
+
         // Domain group
         if (isset($options['domain']) && !empty($options['domain'])) {
             $domain = $options['domain'];
@@ -424,7 +424,7 @@ class RouteGenerator implements GeneratorInterface
                 $groupStart .= "->domain('{$domain}')->group(function () {\n";
             }
         }
-        
+
         // API versioning for API routes
         if ($type === 'api' && isset($options['api_version']) && !empty($options['api_version'])) {
             $version = $options['api_version'];
@@ -435,12 +435,12 @@ class RouteGenerator implements GeneratorInterface
                 $groupStart .= "->prefix('v{$version}')->group(function () {\n";
             }
         }
-        
+
         // Add indentation to the group content
         if (!empty($groupStart)) {
             return $groupStart;
         }
-        
+
         return '';
     }
 
@@ -458,23 +458,23 @@ class RouteGenerator implements GeneratorInterface
         $routeContent = '';
         $resourceName = Str::kebab(Str::plural($table));
         $modelVariable = Str::camel(Str::singular($table));
-        
+
         foreach ($customMethods as $method => $config) {
             $httpMethod = $config['http_method'] ?? 'get';
             $path = $config['path'] ?? $method;
             $action = $config['action'] ?? $method;
             $name = $config['name'] ?? "{$resourceName}.{$method}";
             $middleware = isset($config['middleware']) ? $this->assignMiddleware($type, $config['middleware']) : '';
-            
+
             // Determine if it's a resource-specific route
             $resourcePath = '';
             if ($config['resource_specific'] ?? false) {
                 $resourcePath = "/{{{$modelVariable}}}";
             }
-            
+
             $routeContent .= "\nRoute::{$httpMethod}('{$resourceName}{$resourcePath}/{$path}', [{$controller}::class, '{$action}'])->name('{$name}'){$middleware};";
         }
-        
+
         return $routeContent;
     }
 
@@ -487,21 +487,21 @@ class RouteGenerator implements GeneratorInterface
     public function setupApiPrefixAndDomain(array $options): string
     {
         $groupCode = '';
-        
+
         if (isset($options['api_prefix']) && !empty($options['api_prefix'])) {
             $prefix = $options['api_prefix'];
             $groupCode .= "->prefix('{$prefix}')";
         }
-        
+
         if (isset($options['api_domain']) && !empty($options['api_domain'])) {
             $domain = $options['api_domain'];
             $groupCode .= "->domain('{$domain}')";
         }
-        
+
         if (!empty($groupCode)) {
             return "Route" . $groupCode . "->group(function () {\n    {{routes}}\n});";
         }
-        
+
         return '';
     }
 
@@ -527,16 +527,16 @@ class RouteGenerator implements GeneratorInterface
     {
         $resourceName = Str::kebab(Str::plural($table));
         $controllerClass = $this->controllerGenerator->getClassName($table);
-        
+
         if ($type === 'api') {
             $controllerClass = 'Api' . $controllerClass;
         }
-        
+
         // Check for the presence of the resource route
-        return Str::contains($content, "Route::resource('{$resourceName}'") || 
-               Str::contains($content, "Route::apiResource('{$resourceName}'");
+        return Str::contains($content, "Route::resource('{$resourceName}'") ||
+            Str::contains($content, "Route::apiResource('{$resourceName}'");
     }
-    
+
     /**
      * Get the closing code for route groups.
      *
@@ -546,42 +546,42 @@ class RouteGenerator implements GeneratorInterface
     protected function getRouteGroupClosing(array $options): string
     {
         $groupCount = 0;
-        
+
         if (isset($options['middleware']) && !empty($options['middleware'])) {
             $groupCount++;
         }
-        
+
         if (isset($options['prefix']) && !empty($options['prefix'])) {
             $groupCount++;
         }
-        
+
         if (isset($options['domain']) && !empty($options['domain'])) {
             $groupCount++;
         }
-        
+
         if (isset($options['api_version']) && !empty($options['api_version'])) {
             $groupCount++;
         }
-        
+
         if ($groupCount > 0) {
             return str_repeat("});", $groupCount);
         }
-        
+
         return '';
     }
-    
+
     /**
      * Get the class name for a resource (not used, but required by interface).
      *
      * @param string $table The database table name
      * @return string The class name (empty for routes)
      */
-    public function getClassName(string $table): string
+    public function getClassName(string $table, string $action = ""): string
     {
         // Routes don't have a class name, but we need this for the interface
         return '';
     }
-    
+
     /**
      * Get the namespace for routes (not used, but required by interface).
      *
@@ -591,5 +591,38 @@ class RouteGenerator implements GeneratorInterface
     {
         // Routes don't have a namespace, but we need this for the interface
         return '';
+    }
+
+
+    /**
+     * Set configuration options for the generator.
+     *
+     * @param array $options Configuration options
+     * @return self Returns the generator instance for method chaining
+     */
+    public function setOptions(array $options): self
+    {
+        $this->options = array_merge($this->options, $options);
+        return $this;
+    }
+
+    /**
+     * Get a list of all generated file paths.
+     *
+     * @return array List of generated file paths
+     */
+    public function getGeneratedFiles(): array
+    {
+        return $this->generatedFiles;
+    }
+
+    /**
+     * Determine if the generator supports customization.
+     *
+     * @return bool True if the generator supports customization
+     */
+    public function supportsCustomization(): bool
+    {
+        return true;
     }
 }

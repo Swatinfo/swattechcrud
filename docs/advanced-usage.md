@@ -65,7 +65,7 @@ use SwatTech\Crud\Generators\ModelGenerator as BaseModelGenerator;
 
 class CustomModelGenerator extends BaseModelGenerator
 {
-    protected function getStub()
+    protected function getStub(string $view)
     {
         return resource_path('stubs/custom-model.stub');
     }

@@ -99,7 +99,7 @@ class ResourceGenerator implements GeneratorInterface
      * @param string $table The database table name
      * @return string The resource class name
      */
-    public function getClassName(string $table): string
+    public function getClassName(string $table, string $action = ""): string
     {
         $modelName = Str::studly(Str::singular($table));
         return $modelName . 'Resource';
@@ -120,7 +120,7 @@ class ResourceGenerator implements GeneratorInterface
      *
      * @return string The resource file path
      */
-    public function getPath(): string
+    public function getPath(string $path = ""): string
     {
         return base_path(Config::get('crud.paths.resources', 'app/Http/Resources'));
     }
@@ -188,7 +188,7 @@ class ResourceGenerator implements GeneratorInterface
         $namespace = $this->getNamespace();
         $modelClass = Str::studly(Str::singular($table));
         $modelNamespace = Config::get('crud.namespaces.models', 'App\\Models');
-        $stub = $this->getStub();
+        $stub = $this->getStub("resource");
 
         // Generate data transformation code
         $dataTransformation = $this->implementDataTransformation($columns, $options);
@@ -294,7 +294,7 @@ class ResourceGenerator implements GeneratorInterface
 
         // Fields to exclude from the resource
         $excludeFields = $options['exclude_fields'] ?? ['password', 'remember_token'];
-        
+
         foreach ($columns as $column) {
             if (in_array($column['name'], $excludeFields)) {
                 continue;
@@ -304,15 +304,15 @@ class ResourceGenerator implements GeneratorInterface
             if (in_array($column['type'], ['date', 'datetime', 'timestamp'])) {
                 $format = $options['date_format'] ?? 'Y-m-d H:i:s';
                 $transformationCode .= "            '{$column['name']}' => \$this->{$column['name']} ? \$this->{$column['name']}->format('$format') : null,\n";
-            } 
+            }
             // Custom formatting for specific field types
             elseif ($column['type'] === 'decimal' || $column['type'] === 'float') {
                 $transformationCode .= "            '{$column['name']}' => (float) \$this->{$column['name']},\n";
-            } 
+            }
             // Convert JSON fields to arrays
             elseif ($column['type'] === 'json') {
                 $transformationCode .= "            '{$column['name']}' => json_decode(\$this->{$column['name']}),\n";
-            } 
+            }
             // Default handling
             else {
                 $transformationCode .= "            '{$column['name']}' => \$this->{$column['name']},\n";
@@ -338,20 +338,20 @@ class ResourceGenerator implements GeneratorInterface
 
             // Load relationships when requested
             $relationshipCode .= "            // Include relationships when requested or loaded\n";
-            
+
             foreach ($relationships as $type => $relations) {
                 foreach ($relations as $relation) {
                     $relationName = $relation['method'] ?? Str::camel($relation['related_table']);
                     $resourceClass = Str::studly(Str::singular($relation['related_table'])) . 'Resource';
-                    
+
                     $relationshipCode .= "            '{$relationName}' => \$this->when(\$this->relationLoaded('{$relationName}'), function () {\n";
-                    
+
                     if (in_array($type, ['hasMany', 'belongsToMany', 'morphMany'])) {
                         $relationshipCode .= "                return {$resourceClass}::collection(\$this->{$relationName});\n";
                     } else {
                         $relationshipCode .= "                return \$this->{$relationName} ? new {$resourceClass}(\$this->{$relationName}) : null;\n";
                     }
-                    
+
                     $relationshipCode .= "            }),\n";
                 }
             }
@@ -374,7 +374,7 @@ class ResourceGenerator implements GeneratorInterface
         // If there are any fields to conditionally include
         if (!empty($options['conditional_fields'])) {
             $conditionalCode = "\n            // Conditional fields\n";
-            
+
             foreach ($options['conditional_fields'] as $field => $condition) {
                 if (is_string($condition)) {
                     // Simple permission-based condition
@@ -394,7 +394,7 @@ class ResourceGenerator implements GeneratorInterface
         // Add computed/derived fields
         if (!empty($options['computed_fields'])) {
             $conditionalCode .= "\n            // Computed fields\n";
-            
+
             foreach ($options['computed_fields'] as $field => $computationMethod) {
                 $conditionalCode .= "            '{$field}' => \$this->{$computationMethod}(),\n";
             }
@@ -610,7 +610,7 @@ class ResourceGenerator implements GeneratorInterface
         // This is a placeholder. In a real implementation, you would use
         // a SchemaHelper or DatabaseAnalyzer to get the actual table columns
         // For now, we'll return a simple array with common fields
-        
+
         return [
             ['name' => 'id', 'type' => 'integer'],
             ['name' => 'name', 'type' => 'string'],
@@ -619,5 +619,36 @@ class ResourceGenerator implements GeneratorInterface
             ['name' => 'created_at', 'type' => 'timestamp'],
             ['name' => 'updated_at', 'type' => 'timestamp'],
         ];
+    }
+    /**
+     * Set configuration options for the generator.
+     *
+     * @param array $options Configuration options
+     * @return self Returns the generator instance for method chaining
+     */
+    public function setOptions(array $options): self
+    {
+        $this->options = array_merge($this->options, $options);
+        return $this;
+    }
+
+    /**
+     * Get a list of all generated file paths.
+     *
+     * @return array List of generated file paths
+     */
+    public function getGeneratedFiles(): array
+    {
+        return $this->generatedFiles;
+    }
+
+    /**
+     * Determine if the generator supports customization.
+     *
+     * @return bool True if the generator supports customization
+     */
+    public function supportsCustomization(): bool
+    {
+        return true;
     }
 }
