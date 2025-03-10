@@ -67,10 +67,7 @@
         "psr-4": {
             "SwatTech\\Crud\\": "src/"
         },
-        "files": [
-            "src/Helpers/RelationshipHelper.php",
-            "src/Helpers/SchemaHelper.php",
-            "src/Helpers/StringHelper.php"
+        "files": [           
         ]
     },
     "autoload-dev": {
