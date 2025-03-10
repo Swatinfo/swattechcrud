@@ -30,7 +30,7 @@
         "illuminate/filesystem": "^12.0",
         "illuminate/contracts": "^12.0",
         "illuminate/events": "^12.0",
-        "nesbot/carbon": "^2.0",
+        "nesbot/carbon": ">=3.0",
         "spatie/laravel-permission": "^5.0",
         "barryvdh/laravel-ide-helper": "^3.0",
         "maatwebsite/excel": "^3.1",
