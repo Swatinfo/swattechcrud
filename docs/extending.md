@@ -36,7 +36,7 @@ class CustomModelGenerator extends BaseModelGenerator
      *
      * @return string
      */
-    protected function getStub()
+    protected function getStub(string $view)
     {
         return resource_path('stubs/custom-model.stub');
     }

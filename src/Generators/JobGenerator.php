@@ -114,7 +114,7 @@ class JobGenerator implements GeneratorInterface
      *
      * @return string The job file path
      */
-    public function getPath(): string
+    public function getPath(string $path = ""): string
     {
         return base_path(Config::get('crud.paths.jobs', 'app/Jobs'));
     }
@@ -124,7 +124,7 @@ class JobGenerator implements GeneratorInterface
      *
      * @return string The stub template content
      */
-    public function getStub(): string
+    public function getStub(string $view = ""): string
     {
         $customStubPath = resource_path('stubs/crud/job.stub');
 
@@ -179,7 +179,7 @@ class JobGenerator implements GeneratorInterface
         $modelClass = Str::studly(Str::singular($table));
         $modelNamespace = Config::get('crud.namespaces.models', 'App\\Models');
         $modelVariable = Str::camel($modelClass);
-        
+
         $stub = $this->getStub();
 
         // Implement ShouldQueue interface
@@ -268,14 +268,14 @@ use Illuminate\\Queue\\SerializesModels;";
     {
         $queue = $options['queue'] ?? 'default';
         $connection = $options['connection'] ?? null;
-        
+
         $code = "    /**
      * The name of the queue the job should be sent to.
      *
      * @var string|null
      */
     public \$queue = '{$queue}';";
-        
+
         if ($connection) {
             $code .= "\n
     /**
@@ -285,7 +285,7 @@ use Illuminate\\Queue\\SerializesModels;";
      */
     public \$connection = '{$connection}';";
         }
-        
+
         return $code;
     }
 
@@ -300,14 +300,14 @@ use Illuminate\\Queue\\SerializesModels;";
         $maxTries = $options['max_tries'] ?? 3;
         $retryAfter = $options['retry_after'] ?? 60;
         $backoff = $options['backoff'] ?? null;
-        
+
         $code = "    /**
      * The number of times the job may be attempted.
      *
      * @var int
      */
     public \$tries = {$maxTries};";
-        
+
         if ($backoff) {
             $code .= "\n
     /**
@@ -328,7 +328,7 @@ use Illuminate\\Queue\\SerializesModels;";
      */
     public \$retryAfter = {$retryAfter};";
         }
-        
+
         return $code;
     }
 
@@ -341,7 +341,7 @@ use Illuminate\\Queue\\SerializesModels;";
     public function setupTimeoutSettings(array $options): string
     {
         $timeout = $options['timeout'] ?? 60;
-        
+
         return "    /**
      * The number of seconds the job can run before timing out.
      *
@@ -361,11 +361,11 @@ use Illuminate\\Queue\\SerializesModels;";
         if (empty($middleware)) {
             return '';
         }
-        
+
         $middlewareItems = array_map(function ($item) {
             return "            new \\{$item}(),";
         }, $middleware);
-        
+
         return "    /**
      * Get the middleware the job should pass through.
      *
@@ -390,7 +390,7 @@ use Illuminate\\Queue\\SerializesModels;";
         if (!($options['use_batch'] ?? false)) {
             return '';
         }
-        
+
         return "    /**
      * Get the batch ID associated with the job.
      *
@@ -489,11 +489,11 @@ use Illuminate\\Queue\\SerializesModels;";
         if (empty($chainedJobs)) {
             return '';
         }
-        
+
         $jobClasses = array_map(function ($job) {
             return "            new \\{$job}(\$this->{{modelVariable}}),";
         }, $chainedJobs);
-        
+
         return "    /**
      * Get the chain of jobs that should be run after this job.
      *
@@ -506,15 +506,35 @@ use Illuminate\\Queue\\SerializesModels;";
         ];
     }";
     }
-    
     /**
-     * Get the class name for a resource (needed to comply with GeneratorInterface).
-     * 
-     * @param string $table The database table name
-     * @return string The class name
+     * Set configuration options for the generator.
+     *
+     * @param array $options Configuration options
+     * @return self Returns the generator instance for method chaining
      */
-    public function getClassName(string $table): string 
+    public function setOptions(array $options): self
     {
-        return $this->getClassName($table, 'Process');
+        $this->options = array_merge($this->options, $options);
+        return $this;
+    }
+
+    /**
+     * Get a list of all generated file paths.
+     *
+     * @return array List of generated file paths
+     */
+    public function getGeneratedFiles(): array
+    {
+        return $this->generatedFiles;
+    }
+
+    /**
+     * Determine if the generator supports customization.
+     *
+     * @return bool True if the generator supports customization
+     */
+    public function supportsCustomization(): bool
+    {
+        return true;
     }
 }

@@ -857,4 +857,45 @@ class RelationshipAnalyzer implements AnalyzerInterface
         $this->connection = $connection;
         return $this;
     }
+    /**
+     * Get the database schema instance.
+     *
+     * @return \Illuminate\Database\Schema\Builder
+     */
+    public function getSchema()
+    {
+        return $this->schemaHelper->getSchema($this->connection);
+    }
+
+    /**
+     * Get the database name.
+     *
+     * @return string
+     */
+    public function getDatabaseName(): string
+    {
+        return $this->schemaHelper->getDatabaseName($this->connection);
+    }
+
+    /**
+     * Get the supported relationship types.
+     *
+     * @return array
+     */
+    public function supportedRelationships() : array
+    {
+        return [
+            'hasMany',
+            'hasOne',
+            'belongsTo',
+            'belongsToMany',
+            'morphTo',
+            'morphMany',
+            'morphOne',
+            'hasManyThrough',
+            'hasOneThrough',
+            'morphToMany',
+            'morphedByMany'
+        ];
+    }
 }

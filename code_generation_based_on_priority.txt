@@ -890,7 +890,7 @@ src/Generators/ViewGenerator.php**
       - Implement constructor with StringHelper and RelationshipAnalyzer
       - Add generate(string $table, array $options = []) method
       - Include getViewName(string $table, string $view) method
-      - Add getPath(string $view) method
+      - Add getPath(string $path = "") method
       - Include getStub(string $view) method to get view stubs
       - Add buildView(string $table, string $view, array $options) method
       - Include generateIndexView(string $table, array $columns, array $options) method

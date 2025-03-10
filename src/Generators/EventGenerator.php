@@ -114,7 +114,7 @@ class EventGenerator implements GeneratorInterface
      *
      * @return string The event file path
      */
-    public function getPath(): string
+    public function getPath(string $path = ""): string
     {
         return base_path(Config::get('crud.paths.events', 'app/Events'));
     }
@@ -122,12 +122,14 @@ class EventGenerator implements GeneratorInterface
     /**
      * Get the stub template content for event generation.
      *
-     * @param bool $shouldBroadcast Whether the event should broadcast
+     * @param string $filename The stub filename or type identifier
      * @return string The stub template content
      */
-    public function getStub(bool $shouldBroadcast = false): string
+    public function getStub(string $filename): string
     {
-        $stubName = $shouldBroadcast ? 'broadcasting_event.stub' : 'event.stub';
+        // $shouldBroadcast = $filename === 'broadcast' || $filename === 'broadcasting_event.stub';
+        // $stubName = $shouldBroadcast ? 'broadcasting_event.stub' : 'event.stub';
+        $stubName = $filename;
         $customStubPath = resource_path("stubs/crud/{$stubName}");
 
         if (Config::get('crud.stubs.use_custom', false) && file_exists($customStubPath)) {
@@ -149,7 +151,7 @@ class EventGenerator implements GeneratorInterface
     {
         $className = $this->getClassName($table, $action);
         $shouldBroadcast = $options['broadcast_events'] ?? false;
-        
+
         $content = $this->buildClass($table, $action, $options);
 
         $filePath = $this->getPath() . '/' . $className . '.php';
@@ -182,10 +184,11 @@ class EventGenerator implements GeneratorInterface
         $namespace = $this->getNamespace();
         $modelClass = Str::studly(Str::singular($table));
         $modelNamespace = Config::get('crud.namespaces.models', 'App\\Models');
-        
+
         // Determine if event should broadcast
         $shouldBroadcast = $options['broadcast_events'] ?? false;
-        $stub = $this->getStub($shouldBroadcast);
+        // $stub = $this->getStub($shouldBroadcast);
+        $stub = $this->getStub($shouldBroadcast ? 'broadcasting_event.stub' : 'event.stub');
 
         // Set up broadcasting implementation
         $broadcastingCode = '';
@@ -270,7 +273,7 @@ class EventGenerator implements GeneratorInterface
         $privateChannel = $options['private_channel'] ?? false;
         $presenceChannel = $options['presence_channel'] ?? false;
         $useQueue = $options['queue_broadcasts'] ?? false;
-        
+
         $imports = [
             'use Illuminate\Broadcasting\InteractsWithSockets;',
             'use Illuminate\Broadcasting\PrivateChannel;',
@@ -380,7 +383,7 @@ class EventGenerator implements GeneratorInterface
         $privateChannel = $options['private_channel'] ?? false;
         $presenceChannel = $options['presence_channel'] ?? false;
         $channelName = $options['channel_name'] ?? '{{modelClass}}';
-        
+
         $code = "    /**
      * Get the broadcasting channel for this event.
      *
@@ -388,7 +391,7 @@ class EventGenerator implements GeneratorInterface
      */
     protected function getBroadcastChannel()
     {";
-        
+
         if ($presenceChannel) {
             $code .= "
         return new PresenceChannel('{$channelName}.' . \$this->model->id);";
@@ -399,10 +402,10 @@ class EventGenerator implements GeneratorInterface
             $code .= "
         return ['{$channelName}', '{$channelName}.' . \$this->model->id];";
         }
-        
+
         $code .= "
     }";
-        
+
         return $code;
     }
 
@@ -445,7 +448,7 @@ class EventGenerator implements GeneratorInterface
 
         $queue = $options['queue'] ?? 'default';
         $connection = $options['connection'] ?? 'default';
-        
+
         return "
     /**
      * The name of the queue the job should be sent to.
@@ -508,7 +511,7 @@ class EventGenerator implements GeneratorInterface
         ];
 
         $implementsString = 'implements ' . implode(', ', $interfaces);
-        
+
         return $implementsString . "\n{
     " . implode("\n    ", $traitsToUse);
     }
@@ -531,5 +534,36 @@ class EventGenerator implements GeneratorInterface
     {
         event(new static(\$model, \$data));
     }";
+    }
+    /**
+     * Set configuration options for the generator.
+     *
+     * @param array $options Configuration options
+     * @return self Returns the generator instance for method chaining
+     */
+    public function setOptions(array $options): self
+    {
+        $this->options = array_merge($this->options, $options);
+        return $this;
+    }
+
+    /**
+     * Get a list of all generated file paths.
+     *
+     * @return array List of generated file paths
+     */
+    public function getGeneratedFiles(): array
+    {
+        return $this->generatedFiles;
+    }
+
+    /**
+     * Determine if the generator supports customization.
+     *
+     * @return bool True if the generator supports customization
+     */
+    public function supportsCustomization(): bool
+    {
+        return true;
     }
 }

@@ -45,7 +45,7 @@ interface GeneratorInterface
      *
      * @return string The stub template content
      */
-    public function getStub(): string;
+    public function getStub(string $filename): string;
 
     /**
      * Get the namespace for generated classes.
@@ -65,7 +65,7 @@ interface GeneratorInterface
      *
      * @return string The file path for generated files
      */
-    public function getPath(): string;
+    public function getPath(string $filename): string;
 
     /**
      * Get the class name for the generated file.
@@ -76,7 +76,7 @@ interface GeneratorInterface
      * @param string $table The database table name
      * @return string The generated class name
      */
-    public function getClassName(string $table): string;
+    public function getClassName(string $table, string $action): string;
 
     /**
      * Get a list of all generated file paths.

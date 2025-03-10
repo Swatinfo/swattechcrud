@@ -147,7 +147,7 @@ class MigrationGenerator implements GeneratorInterface
      *
      * @return string The migration file path
      */
-    public function getPath(): string
+    public function getPath(string $path = ""): string
     {
         return database_path($this->options['path'] ?? 'migrations');
     }

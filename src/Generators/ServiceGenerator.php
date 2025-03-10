@@ -93,7 +93,7 @@ class ServiceGenerator implements GeneratorInterface
      * @param string $table The database table name
      * @return string The service class name
      */
-    public function getClassName(string $table): string
+    public function getClassName(string $table, string $action = ""): string
     {
         $modelName = Str::studly(Str::singular($table));
         return $modelName . 'Service';
@@ -114,7 +114,7 @@ class ServiceGenerator implements GeneratorInterface
      *
      * @return string The service file path
      */
-    public function getPath(): string
+    public function getPath(string $path = ""): string
     {
         return base_path(Config::get('crud.paths.services', 'app/Services'));
     }
@@ -124,7 +124,7 @@ class ServiceGenerator implements GeneratorInterface
      *
      * @return string The stub template content
      */
-    public function getStub(): string
+    public function getStub(string $view = ""): string
     {
         $customStubPath = resource_path("stubs/crud/service.stub");
 
@@ -179,7 +179,7 @@ class ServiceGenerator implements GeneratorInterface
         $repositoryClass = $modelClass . 'Repository';
         $repositoryNamespace = Config::get('crud.namespaces.repositories', 'App\\Repositories');
         $repositoryInterfaceName = $repositoryClass . 'Interface';
-        
+
         $stub = $this->getStub();
 
         // Setup repository injection
@@ -557,12 +557,12 @@ class ServiceGenerator implements GeneratorInterface
         $namespace = Config::get('crud.namespaces.providers', 'App\\Providers');
         $className = 'ServiceServiceProvider';
         $servicesNamespace = $this->getNamespace();
-        
+
         $stub = resource_path('stubs/crud/service_provider.stub');
         if (!Config::get('crud.stubs.use_custom', false) || !file_exists($stub)) {
             $stub = __DIR__ . '/../stubs/service_provider.stub';
         }
-        
+
         // If stub doesn't exist, create content directly
         if (!file_exists($stub)) {
             $content = "<?php
@@ -784,5 +784,36 @@ class {$className} extends ServiceProvider
         }
 
         return $importStatements;
+    }
+    /**
+     * Set configuration options for the generator.
+     *
+     * @param array $options Configuration options
+     * @return self Returns the generator instance for method chaining
+     */
+    public function setOptions(array $options): self
+    {
+        $this->options = array_merge($this->options, $options);
+        return $this;
+    }
+
+    /**
+     * Get a list of all generated file paths.
+     *
+     * @return array List of generated file paths
+     */
+    public function getGeneratedFiles(): array
+    {
+        return $this->generatedFiles;
+    }
+
+    /**
+     * Determine if the generator supports customization.
+     *
+     * @return bool True if the generator supports customization
+     */
+    public function supportsCustomization(): bool
+    {
+        return true;
     }
 }

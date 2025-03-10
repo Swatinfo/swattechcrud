@@ -25,21 +25,21 @@ class FactoryGenerator implements GeneratorInterface
      * @var StringHelper
      */
     protected $stringHelper;
-    
+
     /**
      * The database analyzer instance.
      *
      * @var DatabaseAnalyzer
      */
     protected $databaseAnalyzer;
-    
+
     /**
      * The list of generated files.
      *
      * @var array
      */
     protected $generatedFiles = [];
-    
+
     /**
      * Factory configuration options.
      *
@@ -57,11 +57,11 @@ class FactoryGenerator implements GeneratorInterface
     {
         $this->stringHelper = $stringHelper;
         $this->databaseAnalyzer = $databaseAnalyzer;
-        
+
         // Load default configuration options
         $this->options = Config::get('crud.factories', []);
     }
-    
+
     /**
      * Generate factory files for the specified database table.
      *
@@ -73,45 +73,45 @@ class FactoryGenerator implements GeneratorInterface
     {
         // Merge custom options with defaults
         $this->options = array_merge($this->options, $options);
-        
+
         // Reset generated files
         $this->generatedFiles = [];
-        
+
         // Analyze the table to get columns and relationships
         $tableSchema = $this->databaseAnalyzer->analyze($table)->getResults();
-        
+
         // Build the factory class
         $className = $this->getClassName($table);
         $factoryContent = $this->buildClass($table, $tableSchema);
-        
+
         // Generate the file path
         $filePath = $this->getPath() . '/' . $className . '.php';
-        
+
         // Create directory if it doesn't exist
         $directory = dirname($filePath);
         if (!is_dir($directory)) {
             mkdir($directory, 0755, true);
         }
-        
+
         // Write the file
         file_put_contents($filePath, $factoryContent);
-        
+
         $this->generatedFiles[] = $filePath;
-        
+
         return $this->generatedFiles;
     }
-    
+
     /**
      * Get the class name for the factory.
      *
      * @param string $table The database table name
      * @return string The factory class name
      */
-    public function getClassName(string $table): string
+    public function getClassName(string $table, string $action = ""): string
     {
         return Str::studly(Str::singular($table)) . 'Factory';
     }
-    
+
     /**
      * Get the namespace for the factory.
      *
@@ -121,33 +121,33 @@ class FactoryGenerator implements GeneratorInterface
     {
         return Config::get('crud.namespaces.factories', 'Database\\Factories');
     }
-    
+
     /**
      * Get the file path for the factory.
      *
      * @return string The factory file path
      */
-    public function getPath(): string
+    public function getPath(string $path = ""): string
     {
         return base_path(Config::get('crud.paths.factories', 'database/factories'));
     }
-    
+
     /**
      * Get the stub template content for factory generation.
      *
      * @return string The stub template content
      */
-    public function getStub(): string
+    public function getStub(string $view = ""): string
     {
         $customStubPath = resource_path('stubs/crud/factory.stub');
-        
+
         if (Config::get('crud.stubs.use_custom', false) && file_exists($customStubPath)) {
             return file_get_contents($customStubPath);
         }
-        
+
         return file_get_contents(__DIR__ . '/../stubs/factory.stub');
     }
-    
+
     /**
      * Build the factory class based on the table schema.
      *
@@ -162,34 +162,34 @@ class FactoryGenerator implements GeneratorInterface
         $modelClass = Str::studly(Str::singular($table));
         $modelNamespace = Config::get('crud.namespaces.models', 'App\\Models');
         $stub = $this->getStub();
-        
+
         // Generate fake data definitions for columns
         $fakerData = $this->generateFakerData($schema['columns'] ?? []);
-        
+
         // Setup relationship handling
         $relationships = $this->setupRelationshipHandling($schema['relationships'] ?? []);
-        
+
         // Generate state methods
         $states = $this->generateStateMethods($this->options['states'] ?? []);
-        
+
         // Implement sequence generation
         $sequences = $this->implementSequenceGeneration();
-        
+
         // Setup after creating hooks
         $afterCreating = $this->setupAfterCreatingHooks();
-        
+
         // Generate complex attribute handling
         $complexAttributes = $this->generateComplexAttributes($this->options['complex_columns'] ?? []);
-        
+
         // Create recycle methods
         $recycleMethods = $this->createRecycleMethods();
-        
+
         // Implement count methods
         $countMethods = $this->implementCountMethods();
-        
+
         // Generate traits
         $traits = $this->generateTraits($this->options['traits'] ?? []);
-        
+
         // Replace stub placeholders
         $factoryContent = str_replace([
             '{{namespace}}',
@@ -220,10 +220,10 @@ class FactoryGenerator implements GeneratorInterface
             $countMethods,
             $traits
         ], $stub);
-        
+
         return $factoryContent;
     }
-    
+
     /**
      * Generate Faker data definitions for table columns.
      *
@@ -233,24 +233,26 @@ class FactoryGenerator implements GeneratorInterface
     public function generateFakerData(array $columns): string
     {
         $fakerStatements = [];
-        
+
         foreach ($columns as $column => $details) {
             // Skip primary key, timestamps, and soft deletes columns
-            if ($column === 'id' || 
-                in_array($column, ['created_at', 'updated_at', 'deleted_at'])) {
+            if (
+                $column === 'id' ||
+                in_array($column, ['created_at', 'updated_at', 'deleted_at'])
+            ) {
                 continue;
             }
-            
+
             $fakerMethod = $this->mapColumnTypeToFaker($column, $details['type'] ?? 'string');
-            
+
             if ($fakerMethod) {
                 $fakerStatements[] = "            '{$column}' => {$fakerMethod},";
             }
         }
-        
+
         return implode("\n", $fakerStatements);
     }
-    
+
     /**
      * Set up relationship handling in the factory.
      *
@@ -260,17 +262,17 @@ class FactoryGenerator implements GeneratorInterface
     public function setupRelationshipHandling(array $relationships): string
     {
         $relationshipCode = '';
-        
+
         if (empty($relationships)) {
             return $relationshipCode;
         }
-        
+
         // Process belongsTo relationships to create foreign keys
         if (!empty($relationships['belongs_to'])) {
             foreach ($relationships['belongs_to'] as $relation) {
                 $relatedModel = Str::studly(Str::singular($relation['related_table']));
                 $foreignKey = $relation['foreign_key'];
-                
+
                 $relationshipCode .= "
         // Foreign key for {$relatedModel}
         if (\$this->faker->boolean(80)) {
@@ -278,10 +280,10 @@ class FactoryGenerator implements GeneratorInterface
         }";
             }
         }
-        
+
         return $relationshipCode;
     }
-    
+
     /**
      * Generate state methods for the factory.
      *
@@ -291,7 +293,7 @@ class FactoryGenerator implements GeneratorInterface
     public function generateStateMethods(array $states): string
     {
         $stateMethods = '';
-        
+
         foreach ($states as $state => $attributes) {
             $stateMethods .= "
     /**
@@ -303,7 +305,7 @@ class FactoryGenerator implements GeneratorInterface
     {
         return \$this->state(function (array \$attributes) {
             return [";
-            
+
             foreach ($attributes as $attribute => $value) {
                 if (is_string($value)) {
                     $value = "'{$value}'";
@@ -312,21 +314,21 @@ class FactoryGenerator implements GeneratorInterface
                 } elseif (is_null($value)) {
                     $value = 'null';
                 }
-                
+
                 $stateMethods .= "
                 '{$attribute}' => {$value},";
             }
-            
+
             $stateMethods .= "
             ];
         });
     }
 ";
         }
-        
+
         return $stateMethods;
     }
-    
+
     /**
      * Implement sequence generation for the factory.
      *
@@ -337,16 +339,16 @@ class FactoryGenerator implements GeneratorInterface
         if (!isset($this->options['sequences']) || empty($this->options['sequences'])) {
             return '';
         }
-        
+
         $sequences = '';
-        
+
         foreach ($this->options['sequences'] as $attribute => $values) {
-            $values = array_map(function($value) {
+            $values = array_map(function ($value) {
                 return is_string($value) ? "'{$value}'" : $value;
             }, $values);
-            
+
             $valuesString = implode(', ', $values);
-            
+
             $sequences .= "
     /**
      * Configure the model factory to cycle through a sequence of values for {$attribute}.
@@ -364,10 +366,10 @@ class FactoryGenerator implements GeneratorInterface
     }
 ";
         }
-        
+
         return $sequences;
     }
-    
+
     /**
      * Set up after creating hooks for the factory.
      *
@@ -378,7 +380,7 @@ class FactoryGenerator implements GeneratorInterface
         if (!isset($this->options['after_creating']) || empty($this->options['after_creating'])) {
             return '';
         }
-        
+
         $afterCreating = "
     /**
      * Configure the after creating hook.
@@ -389,19 +391,19 @@ class FactoryGenerator implements GeneratorInterface
     {
         return \$this->afterCreating(function (\$model) {
             // After creating hook logic";
-        
+
         foreach ($this->options['after_creating'] as $hook) {
             $afterCreating .= "
             {$hook}";
         }
-        
+
         $afterCreating .= "
         });
     }";
-        
+
         return $afterCreating;
     }
-    
+
     /**
      * Generate complex attribute handling for the factory.
      *
@@ -411,10 +413,10 @@ class FactoryGenerator implements GeneratorInterface
     public function generateComplexAttributes(array $complexColumns): string
     {
         $complexAttributesCode = '';
-        
+
         foreach ($complexColumns as $column => $handler) {
             $method = 'with' . Str::studly($column);
-            
+
             $complexAttributesCode .= "
     /**
      * Set a custom {$column} value.
@@ -432,10 +434,10 @@ class FactoryGenerator implements GeneratorInterface
     }
 ";
         }
-        
+
         return $complexAttributesCode;
     }
-    
+
     /**
      * Create recycle methods for the factory.
      *
@@ -446,7 +448,7 @@ class FactoryGenerator implements GeneratorInterface
         if (!isset($this->options['enable_recycling']) || $this->options['enable_recycling'] !== true) {
             return '';
         }
-        
+
         return "
     /**
      * Recycle an existing model from the database if available.
@@ -469,7 +471,7 @@ class FactoryGenerator implements GeneratorInterface
     }
 ";
     }
-    
+
     /**
      * Implement count methods for the factory.
      *
@@ -480,9 +482,9 @@ class FactoryGenerator implements GeneratorInterface
         if (!isset($this->options['count_methods']) || empty($this->options['count_methods'])) {
             return '';
         }
-        
+
         $countMethods = '';
-        
+
         foreach ($this->options['count_methods'] as $method => $count) {
             $countMethods .= "
     /**
@@ -496,10 +498,10 @@ class FactoryGenerator implements GeneratorInterface
     }
 ";
         }
-        
+
         return $countMethods;
     }
-    
+
     /**
      * Generate traits for the factory.
      *
@@ -511,25 +513,25 @@ class FactoryGenerator implements GeneratorInterface
         if (empty($traits)) {
             return '';
         }
-        
+
         $traitsCode = "    /**
      * The traits to mix into the factory.
      *
      * @var array
      */
     protected \$traits = [";
-        
+
         foreach ($traits as $trait) {
             $traitsCode .= "
         \\{$trait}::class,";
         }
-        
+
         $traitsCode .= "
     ];";
-        
+
         return $traitsCode;
     }
-    
+
     /**
      * Map database column type to appropriate Faker method.
      *
@@ -568,11 +570,11 @@ class FactoryGenerator implements GeneratorInterface
             'ip_address' => '$this->faker->ipv4',
             'user_agent' => '$this->faker->userAgent()',
         ];
-        
+
         if (isset($columnNameMap[$column])) {
             return $columnNameMap[$column];
         }
-        
+
         // Then check by column type
         $typeMap = [
             'string' => '$this->faker->word()',
@@ -596,43 +598,43 @@ class FactoryGenerator implements GeneratorInterface
             'json' => 'json_encode([$this->faker->word() => $this->faker->word()])',
             'uuid' => '$this->faker->uuid()',
         ];
-        
+
         // Check for specific column name patterns
         if (Str::endsWith($column, '_id') && $type === 'integer') {
             return '$this->faker->numberBetween(1, 100)';
         }
-        
+
         if (Str::endsWith($column, '_at') && in_array($type, ['datetime', 'timestamp'])) {
             return '$this->faker->dateTime()';
         }
-        
+
         if (Str::endsWith($column, '_date') && $type === 'date') {
             return '$this->faker->date()';
         }
-        
+
         if (Str::contains($column, 'email')) {
             return '$this->faker->unique()->safeEmail()';
         }
-        
+
         if (Str::contains($column, 'name')) {
             return '$this->faker->name()';
         }
-        
+
         if (Str::contains($column, 'phone')) {
             return '$this->faker->phoneNumber()';
         }
-        
+
         if (Str::contains($column, 'address')) {
             return '$this->faker->address()';
         }
-        
+
         if (Str::contains($column, 'price')) {
             return '$this->faker->randomFloat(2, 10, 1000)';
         }
-        
+
         return $typeMap[$type] ?? '$this->faker->word()';
     }
-    
+
     /**
      * Set configuration options for the generator.
      *
@@ -644,7 +646,7 @@ class FactoryGenerator implements GeneratorInterface
         $this->options = array_merge($this->options, $options);
         return $this;
     }
-    
+
     /**
      * Get a list of all generated file paths.
      *
@@ -654,7 +656,7 @@ class FactoryGenerator implements GeneratorInterface
     {
         return $this->generatedFiles;
     }
-    
+
     /**
      * Determine if the generator supports customization.
      *

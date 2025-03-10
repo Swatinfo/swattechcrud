@@ -102,7 +102,7 @@ class ControllerGenerator implements GeneratorInterface
      * @param string $table The database table name
      * @return string The controller class name
      */
-    public function getClassName(string $table): string
+    public function getClassName(string $table, string $action = ""): string
     {
         $modelName = Str::studly(Str::singular($table));
         return $modelName . 'Controller';
@@ -123,7 +123,7 @@ class ControllerGenerator implements GeneratorInterface
      *
      * @return string The controller file path
      */
-    public function getPath(): string
+    public function getPath(string $path = ""): string
     {
         return base_path(Config::get('crud.paths.controllers', 'app/Http/Controllers'));
     }
@@ -185,7 +185,7 @@ class ControllerGenerator implements GeneratorInterface
     {
         $modelName = Str::studly(Str::singular($table));
         $className = 'Api' . $modelName . 'Controller';
-        
+
         $apiOptions = array_merge($options, ['is_api' => true]);
         $content = $this->buildClass($table, $apiOptions, 'api');
 
@@ -218,7 +218,7 @@ class ControllerGenerator implements GeneratorInterface
     {
         $modelName = Str::studly(Str::singular($table));
         $modelVariable = Str::camel($modelName);
-        
+
         if ($type === 'api') {
             $className = 'Api' . $modelName . 'Controller';
             $namespace = $this->getNamespace() . '\\Api';
@@ -226,11 +226,11 @@ class ControllerGenerator implements GeneratorInterface
             $className = $this->getClassName($table);
             $namespace = $this->getNamespace();
         }
-        
+
         $modelNamespace = Config::get('crud.namespaces.models', 'App\\Models');
         $serviceClass = $modelName . 'Service';
         $serviceNamespace = Config::get('crud.namespaces.services', 'App\\Services');
-        
+
         $stub = $this->getStub($type);
 
         // Setup service injection
@@ -343,7 +343,7 @@ class ControllerGenerator implements GeneratorInterface
     public function setupRequestValidation(array $requestClasses): string
     {
         $validationCode = "";
-        
+
         if (!empty($requestClasses)) {
             $validationCode = "    /**
      * Get the appropriate request class for the given action.
@@ -361,7 +361,7 @@ class ControllerGenerator implements GeneratorInterface
             $validationCode .= "        ][\$action] ?? FormRequest::class;
     }";
         }
-        
+
         return $validationCode;
     }
 
@@ -395,7 +395,7 @@ class ControllerGenerator implements GeneratorInterface
     public function generateViewRenderingMethods(string $table): string
     {
         $viewPrefix = Str::kebab(Str::plural($table));
-        
+
         return "    /**
      * Get the view for the given action.
      *
@@ -586,7 +586,7 @@ class ControllerGenerator implements GeneratorInterface
         $modelPluralVariable = Str::camel(Str::plural($modelName));
         $requestStore = $modelName . 'StoreRequest';
         $requestUpdate = $modelName . 'UpdateRequest';
-        
+
         if ($type === 'api') {
             return "    /**
      * Display a listing of the resource.
@@ -960,7 +960,7 @@ class ControllerGenerator implements GeneratorInterface
             "{$requestNamespace}\\{$modelName}StoreRequest",
             "{$requestNamespace}\\{$modelName}UpdateRequest",
         ];
-        
+
         if ($type === 'api') {
             $apiImports = [
                 'Illuminate\Http\JsonResponse',
@@ -974,15 +974,47 @@ class ControllerGenerator implements GeneratorInterface
             ];
             $imports = array_merge($commonImports, $webImports);
         }
-        
+
         $imports = array_unique($imports);
         sort($imports);
-        
+
         $importStatements = '';
         foreach ($imports as $import) {
             $importStatements .= "use {$import};\n";
         }
-        
+
         return $importStatements;
+    }
+
+    /**
+     * Set configuration options for the generator.
+     *
+     * @param array $options Configuration options
+     * @return self Returns the generator instance for method chaining
+     */
+    public function setOptions(array $options): self
+    {
+        $this->options = array_merge($this->options ?? [], $options);
+        return $this;
+    }
+
+    /**
+     * Get a list of all generated file paths.
+     *
+     * @return array List of generated file paths
+     */
+    public function getGeneratedFiles(): array
+    {
+        return $this->generatedFiles ?? [];
+    }
+
+    /**
+     * Determine if the generator supports customization.
+     *
+     * @return bool True if the generator supports customization
+     */
+    public function supportsCustomization(): bool
+    {
+        return true;
     }
 }

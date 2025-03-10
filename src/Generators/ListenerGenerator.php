@@ -78,7 +78,7 @@ class ListenerGenerator implements GeneratorInterface
 
         // Default event actions to listen for
         $events = $this->options['events'] ?? ['Created', 'Updated', 'Deleted'];
-        
+
         // Process each event type
         foreach ($events as $event) {
             $this->generateListener($table, $event, $this->options);
@@ -121,7 +121,7 @@ class ListenerGenerator implements GeneratorInterface
      *
      * @return string The listener file path
      */
-    public function getPath(): string
+    public function getPath(string $path = ""): string
     {
         return base_path(Config::get('crud.paths.listeners', 'app/Listeners'));
     }
@@ -132,15 +132,16 @@ class ListenerGenerator implements GeneratorInterface
      * @param bool $queued Whether the listener should be queued
      * @return string The stub template content
      */
-    public function getStub(bool $queued = false): string
+    public function getStub(string $filename): string
     {
-        $stubName = $queued ? 'queued_listener.stub' : 'listener.stub';
+        // $stubName = $queued ? 'queued_listener.stub' : 'listener.stub';
+        $stubName = $filename;
         $subscriberStubName = 'event_subscriber.stub';
-        
+
         if ($this->options['subscriber'] ?? false) {
             $stubName = $subscriberStubName;
         }
-        
+
         $customStubPath = resource_path("stubs/crud/{$stubName}");
 
         if (Config::get('crud.stubs.use_custom', false) && file_exists($customStubPath)) {
@@ -162,7 +163,7 @@ class ListenerGenerator implements GeneratorInterface
     {
         $className = $this->getClassName($table, $event);
         $queued = $options['queued'] ?? false;
-        
+
         $content = $this->buildClass($table, $event, $options);
 
         $filePath = $this->getPath() . '/' . $className . '.php';
@@ -193,13 +194,13 @@ class ListenerGenerator implements GeneratorInterface
     {
         $modelName = Str::studly(Str::singular($table));
         $className = "{$modelName}EventSubscriber";
-        
+
         $subscriberEvents = [];
         foreach ($events as $event) {
             $eventClass = $this->eventGenerator->getClassName($table, $event);
             $subscriberEvents[$eventClass] = "handle{$event}";
         }
-        
+
         $content = $this->buildSubscriberClass($table, $subscriberEvents, $options);
 
         $filePath = $this->getPath() . '/' . $className . '.php';
@@ -234,10 +235,12 @@ class ListenerGenerator implements GeneratorInterface
         $modelNamespace = Config::get('crud.namespaces.models', 'App\\Models');
         $eventClass = $this->eventGenerator->getClassName($table, $event);
         $eventNamespace = $this->eventGenerator->getNamespace();
-        
+
         // Determine if listener should be queued
         $queued = $options['queued'] ?? false;
-        $stub = $this->getStub($queued);
+
+        // $stub = $this->getStub($queued);
+        $stub = $this->getStub($queued ? 'queued_listener.stub' : 'listener.stub');
 
         // Set up queue specification
         $queueSpec = '';
@@ -319,21 +322,21 @@ class ListenerGenerator implements GeneratorInterface
         $namespace = $this->getNamespace();
         $modelNamespace = Config::get('crud.namespaces.models', 'App\\Models');
         $eventNamespace = $this->eventGenerator->getNamespace();
-        
+
         $stub = file_get_contents(__DIR__ . "/../stubs/event_subscriber.stub");
-        
+
         // Generate the subscriber methods
         $subscriberMethods = '';
         foreach ($events as $eventClass => $methodName) {
             $subscriberMethods .= $this->generateSubscriberMethod($eventClass, $methodName, $table);
         }
-        
+
         // Generate the subscribe method with event mapping
         $subscribeMethod = $this->generateEventSubscriberOptions($events);
-        
+
         // Set up dependency injection
         $dependencyInjection = $this->setupDependencyInjection($options['dependencies'] ?? []);
-        
+
         // Replace stub placeholders
         return str_replace([
             '{{namespace}}',
@@ -397,7 +400,7 @@ class ListenerGenerator implements GeneratorInterface
     protected function generateSubscriberMethod(string $eventClass, string $methodName, string $table): string
     {
         $modelVariable = Str::camel(Str::singular($table));
-        
+
         return "    /**
      * Handle {$eventClass} events.
      *
@@ -429,14 +432,14 @@ class ListenerGenerator implements GeneratorInterface
     {
         $queue = $options['queue'] ?? 'default';
         $connection = $options['connection'] ?? null;
-        
+
         $code = "    /**
      * The name of the queue the job should be sent to.
      *
      * @var string
      */
     public \$queue = '{$queue}';";
-        
+
         if ($connection) {
             $code .= "
     
@@ -447,7 +450,7 @@ class ListenerGenerator implements GeneratorInterface
      */
     public \$connection = '{$connection}';";
         }
-        
+
         return $code;
     }
 
@@ -492,7 +495,7 @@ class ListenerGenerator implements GeneratorInterface
         $maxTries = $options['max_tries'] ?? 3;
         $retryAfter = $options['retry_after'] ?? 60;
         $backoff = $options['backoff'] ?? null;
-        
+
         $code = "    /**
      * The number of times the job may be attempted.
      *
@@ -506,7 +509,7 @@ class ListenerGenerator implements GeneratorInterface
      * @var int
      */
     public \$timeout = 120;";
-        
+
         if ($backoff) {
             $code .= "
     
@@ -529,7 +532,7 @@ class ListenerGenerator implements GeneratorInterface
      */
     public \$retryAfter = {$retryAfter};";
         }
-        
+
         return $code;
     }
 
@@ -559,18 +562,18 @@ protected \$listen = [
         if (empty($dependencies)) {
             return '';
         }
-        
+
         $propertyDefinitions = '';
         $constructorParams = [];
         $constructorAssignments = [];
-        
+
         foreach ($dependencies as $name => $type) {
             if (is_int($name)) {
                 // If the key is numeric, use the value as both type and property name
                 $type = $type;
                 $name = $this->stringHelper->getVariableName($type);
             }
-            
+
             $propertyDefinitions .= "    /**
      * The {$name} instance.
      *
@@ -582,7 +585,7 @@ protected \$listen = [
             $constructorParams[] = "\\{$type} \${$name}";
             $constructorAssignments[] = "        \$this->{$name} = \${$name};";
         }
-        
+
         $constructorCode = "    /**
      * Create a new listener instance.
      *
@@ -595,7 +598,7 @@ protected \$listen = [
     }
 
 ";
-        
+
         return $propertyDefinitions . $constructorCode;
     }
 
@@ -610,11 +613,11 @@ protected \$listen = [
         if (empty($middleware)) {
             return '';
         }
-        
+
         $middlewareItems = array_map(function ($item) {
             return "        new \\{$item}(),";
         }, $middleware);
-        
+
         return "    /**
      * Get the middleware the job should pass through.
      *
@@ -663,11 +666,11 @@ protected \$listen = [
     public function generateEventSubscriberOptions(array $events): string
     {
         $mappings = [];
-        
+
         foreach ($events as $event => $method) {
             $mappings[] = "            \\{{eventNamespace}}\\{$event}::class => '{$method}',";
         }
-        
+
         return "    /**
      * Register the listeners for the subscriber.
      *
@@ -681,15 +684,35 @@ protected \$listen = [
         ];
     }";
     }
-    
     /**
-     * Get the class name for a resource (this is needed to comply with GeneratorInterface).
-     * 
-     * @param string $table The database table name
-     * @return string The class name
+     * Set configuration options for the generator.
+     *
+     * @param array $options Configuration options
+     * @return self Returns the generator instance for method chaining
      */
-    public function getClassName(string $table): string 
+    public function setOptions(array $options): self
     {
-        return $this->getClassName($table, 'Created');
+        $this->options = array_merge($this->options, $options);
+        return $this;
+    }
+
+    /**
+     * Get a list of all generated file paths.
+     *
+     * @return array List of generated file paths
+     */
+    public function getGeneratedFiles(): array
+    {
+        return $this->generatedFiles;
+    }
+
+    /**
+     * Determine if the generator supports customization.
+     *
+     * @return bool True if the generator supports customization
+     */
+    public function supportsCustomization(): bool
+    {
+        return true;
     }
 }

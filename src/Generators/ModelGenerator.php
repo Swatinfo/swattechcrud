@@ -117,7 +117,7 @@ class ModelGenerator implements GeneratorInterface
      * @param string $table The database table name
      * @return string The model class name
      */
-    public function getClassName(string $table): string
+    public function getClassName(string $table, string $action = ""): string
     {
         // Convert table name to singular studly case
         return Str::studly(Str::singular($table));
@@ -138,7 +138,7 @@ class ModelGenerator implements GeneratorInterface
      *
      * @return string The model file path
      */
-    public function getPath(): string
+    public function getPath(string $path = ""): string
     {
         return base_path(Config::get('crud.paths.models', 'app/Models'));
     }
@@ -148,7 +148,7 @@ class ModelGenerator implements GeneratorInterface
      *
      * @return string The stub template content
      */
-    public function getStub(): string
+    public function getStub(string $view = ""): string
     {
         $customStubPath = resource_path('stubs/crud/model.stub');
         
