@@ -45,8 +45,7 @@ class GenerateTestsCommand extends Command
                             {--service : Generate only service tests}
                             {--validation : Generate only validation tests}
                             {--force : Overwrite existing test files}
-                            {--connection= : Database connection to use}
-                            {--no-interaction : Do not ask any interactive questions}
+                            {--connection= : Database connection to use}                            
                             {--namespace= : Custom namespace for tests}';
 
     /**
@@ -225,6 +224,7 @@ class GenerateTestsCommand extends Command
             // Analyze table structure
             $this->info('Analyzing database structure...');
             $databaseAnalysis = $this->databaseAnalyzer->analyze($table);
+            $databaseAnalysis = $this->databaseAnalyzer->getResults();
 
             // Analyze relationships
             $this->info('Analyzing relationships...');
@@ -334,6 +334,7 @@ class GenerateTestsCommand extends Command
             try {
                 // Analyze table structure
                 $databaseAnalysis = $this->databaseAnalyzer->analyze($table);
+                $databaseAnalysis = $this->databaseAnalyzer->getResults();
 
                 // Analyze relationships
                 $this->relationshipAnalyzer->analyze($table);

@@ -44,12 +44,14 @@ class GenerateCrudCommand extends Command
      * @var string
      */
     protected $signature = 'crud:generate 
-                            {table? : The name of the database table} 
                             {--all : Generate CRUD for all tables}
                             {--connection= : Database connection to use}
+                            {--path= : Custom output path}
+                            {--namespace= : Custom namespace}
+                            {--with-api : Generate API endpoints}
+                            {--with-tests : Generate tests}
                             {--model : Generate only model}
                             {--controller : Generate only controller}
-                            {--api : Generate API controller and resources}
                             {--repository : Generate only repository}
                             {--service : Generate only service}
                             {--views : Generate only views}
@@ -64,11 +66,8 @@ class GenerateCrudCommand extends Command
                             {--listener : Generate only listeners}
                             {--job : Generate only jobs}
                             {--force : Overwrite existing files}
-                            {--no-interaction : Do not ask any interactive questions}
                             {--dry-run : Run without creating any files}
-                            {--theme= : Specify the theme for views (default: vuexy)}
-                            {--path= : Custom path for output files}
-                            {--namespace= : Custom namespace for classes}';
+                            {--theme= : Specify the theme for views (default: vuexy)}';
 
     /**
      * The console command description.
@@ -156,10 +155,10 @@ class GenerateCrudCommand extends Command
         JobGenerator $jobGenerator
     ) {
         parent::__construct();
-        
+
         $this->databaseAnalyzer = $databaseAnalyzer;
         $this->relationshipAnalyzer = $relationshipAnalyzer;
-        
+
         // Store generator instances
         $this->generators = [
             'model' => $modelGenerator,
@@ -197,75 +196,74 @@ class GenerateCrudCommand extends Command
                 $this->relationshipAnalyzer->setConnection($connection);
             }
         }
-        
+
         // Check if user wants to generate CRUD for all tables
         if ($this->option('all')) {
             return $this->processBatchGeneration(Schema::getAllTables());
         }
-        
+
         // Get the specified table name
         $table = $this->getTableName();
         if (!$table) {
             $this->error('No table specified. Use the table argument or --all option.');
             return 1;
         }
-        
+
         // Check if table exists
         if (!Schema::hasTable($table)) {
             $this->error("Table '{$table}' does not exist in the database.");
             return 1;
         }
-        
+
         // Prepare generation options
         $options = $this->prepareOptions();
-        
+
         // Check if this is a dry run
         $isDryRun = $this->option('dry-run');
         if ($isDryRun) {
             $this->implementDryRun(true);
             $this->info("Performing dry run for table '{$table}'...");
         }
-        
+
         // Begin generation process
         $this->info("Generating CRUD files for table '{$table}'...");
-        
+
         try {
             // Analyze table structure
             $this->info('Analyzing database structure...');
             $databaseAnalysis = $this->analyzeDatabase($table);
-            
+
             // Analyze relationships
             $this->info('Analyzing relationships...');
             $relationshipAnalysis = $this->analyzeRelationships($table);
-            
+
             // Merge analysis results with options
             $options = array_merge($options, [
                 'database_analysis' => $databaseAnalysis,
                 'relationship_analysis' => $relationshipAnalysis,
                 'force' => $this->option('force')
             ]);
-            
+
             // If interactive mode and not --no-interaction, allow customization
             if (!$this->option('no-interaction')) {
                 $options = $this->handleCustomization($options);
             }
-            
+
             // Coordinate all generators
             $this->coordinateGenerators($table, $options);
-            
+
             // Show progress and any errors
             $this->showProgressAndErrors();
-            
+
             $this->info('CRUD generation completed successfully!');
             return 0;
-            
         } catch (\Exception $e) {
             $this->error('Error during CRUD generation: ' . $e->getMessage());
             $this->line($e->getTraceAsString());
             return 1;
         }
     }
-    
+
     /**
      * Get the table name from input or interactive selection.
      *
@@ -278,34 +276,34 @@ class GenerateCrudCommand extends Command
         if ($table) {
             return $table;
         }
-        
+
         // If we're in no-interaction mode, return null
         if ($this->option('no-interaction')) {
             return null;
         }
-        
+
         // Otherwise, provide an interactive selection
         $tables = Schema::getAllTables();
-        
+
         if (empty($tables)) {
             $this->error('No tables found in the database.');
             return null;
         }
-        
+
         // Format table names for display
         $tableNames = array_map(function ($table) {
             return $table->name ?? $table;
         }, $tables);
-        
+
         // Allow user to choose a table
         $selectedTable = $this->choice(
             'Select a database table to generate CRUD files for:',
             $tableNames
         );
-        
+
         return $selectedTable;
     }
-    
+
     /**
      * Analyze database table structure.
      *
@@ -317,7 +315,7 @@ class GenerateCrudCommand extends Command
         $this->databaseAnalyzer->analyze($table);
         return $this->databaseAnalyzer->getResults();
     }
-    
+
     /**
      * Analyze table relationships.
      *
@@ -329,7 +327,7 @@ class GenerateCrudCommand extends Command
         $this->relationshipAnalyzer->analyze($table);
         return $this->relationshipAnalyzer->getResults();
     }
-    
+
     /**
      * Coordinate the execution of all generators.
      *
@@ -341,17 +339,17 @@ class GenerateCrudCommand extends Command
     {
         // Determine which components to generate based on options
         $componentsToGenerate = $this->getComponentsToGenerate();
-        
+
         // Skip components as specified
         $componentsToSkip = $this->handleComponentSkipping($options);
-        
+
         // Start a progress bar if not in quiet mode
         $progressBar = null;
         if (!$this->option('quiet')) {
             $progressBar = $this->output->createProgressBar(count($componentsToGenerate));
             $progressBar->start();
         }
-        
+
         // Process each selected generator
         foreach ($componentsToGenerate as $component) {
             if (in_array($component, $componentsToSkip)) {
@@ -361,7 +359,7 @@ class GenerateCrudCommand extends Command
                 }
                 continue;
             }
-            
+
             // Check if generator exists
             if (!isset($this->generators[$component])) {
                 $this->errors[] = "Generator for '{$component}' not found.";
@@ -370,22 +368,21 @@ class GenerateCrudCommand extends Command
                 }
                 continue;
             }
-            
+
             try {
                 // Run the generator
                 $generator = $this->generators[$component];
                 $files = $generator->generate($table, $options);
-                
+
                 // Store generated files
                 if (!empty($files)) {
                     $this->generatedFiles[$component] = $files;
                 }
-                
+
                 // Advance progress bar
                 if ($progressBar) {
                     $progressBar->advance();
                 }
-                
             } catch (\Exception $e) {
                 $this->errors[] = "Error generating {$component}: " . $e->getMessage();
                 if ($progressBar) {
@@ -393,14 +390,14 @@ class GenerateCrudCommand extends Command
                 }
             }
         }
-        
+
         // Finish progress bar
         if ($progressBar) {
             $progressBar->finish();
             $this->line(''); // Add a newline after progress bar
         }
     }
-    
+
     /**
      * Set up an interactive CLI interface for customization.
      *
@@ -409,7 +406,7 @@ class GenerateCrudCommand extends Command
     protected function createInteractiveCli()
     {
         $userOptions = [];
-        
+
         // Ask for theme preference if generating views
         if ($this->shouldGenerate('view')) {
             $theme = $this->option('theme') ?? 'vuexy';
@@ -419,37 +416,37 @@ class GenerateCrudCommand extends Command
                 $theme === 'vuexy' ? 0 : null
             );
         }
-        
+
         // Ask for API version if generating API
-        if ($this->option('api') || $this->shouldGenerate('resource')) {
+        if ($this->option('with-api') || $this->shouldGenerate('resource')) {
             $userOptions['api_version'] = $this->ask('API version (leave empty for none):', 'v1');
         }
-        
+
         // Ask if soft deletes should be enabled
         $userOptions['soft_deletes'] = $this->confirm('Enable soft deletes?', true);
-        
+
         // Ask if timestamps should be enabled
         $userOptions['timestamps'] = $this->confirm('Enable timestamps?', true);
-        
+
         // Ask if UUID should be used instead of auto-incrementing IDs
         $userOptions['use_uuid'] = $this->confirm('Use UUID instead of auto-incrementing IDs?', false);
-        
+
         // Ask if factories should generate demo data
         if ($this->shouldGenerate('factory') || $this->shouldGenerate('seeder')) {
             $userOptions['demo_data'] = $this->confirm('Generate demo data in factories/seeders?', true);
         }
-        
+
         // Ask if translations should be generated
         $userOptions['translations'] = $this->confirm('Generate translation files?', false);
-        
+
         // Ask about repository cache
         if ($this->shouldGenerate('repository')) {
             $userOptions['cache_repository'] = $this->confirm('Enable repository caching?', true);
         }
-        
+
         return $userOptions;
     }
-    
+
     /**
      * Handle custom options specified by the user.
      *
@@ -462,16 +459,16 @@ class GenerateCrudCommand extends Command
         if ($this->option('no-interaction')) {
             return $options;
         }
-        
+
         $this->info('Customize CRUD generation options:');
-        
+
         // Get interactive options
         $interactiveOptions = $this->createInteractiveCli();
-        
+
         // Merge with existing options, with interactive taking precedence
         return array_merge($options, $interactiveOptions);
     }
-    
+
     /**
      * Process batch generation for multiple tables.
      *
@@ -481,7 +478,7 @@ class GenerateCrudCommand extends Command
     protected function processBatchGeneration(array $tables)
     {
         $this->info("Batch processing " . count($tables) . " tables...");
-        
+
         // Confirm before proceeding with batch generation
         if (!$this->option('no-interaction')) {
             if (!$this->confirm("This will generate CRUD files for " . count($tables) . " tables. Proceed?", true)) {
@@ -489,65 +486,64 @@ class GenerateCrudCommand extends Command
                 return 0;
             }
         }
-        
+
         // Prepare options
         $options = $this->prepareOptions();
         $options['force'] = $this->option('force');
-        
+
         // Initialize counters
         $successCount = 0;
         $errorCount = 0;
-        
+
         // Process each table
         $progressBar = $this->output->createProgressBar(count($tables));
         $progressBar->start();
-        
+
         foreach ($tables as $table) {
             $tableName = is_object($table) ? $table->name : $table;
-            
+
             // Skip migration/system tables
             if (in_array($tableName, ['migrations', 'failed_jobs', 'password_resets', 'personal_access_tokens'])) {
                 $progressBar->advance();
                 continue;
             }
-            
+
             try {
                 // Analyze table structure and relationships
                 $databaseAnalysis = $this->analyzeDatabase($tableName);
                 $relationshipAnalysis = $this->analyzeRelationships($tableName);
-                
+
                 // Merge analysis results with options
                 $tableOptions = array_merge($options, [
                     'database_analysis' => $databaseAnalysis,
                     'relationship_analysis' => $relationshipAnalysis,
                 ]);
-                
+
                 // Generate CRUD components
                 $this->coordinateGenerators($tableName, $tableOptions);
                 $successCount++;
-                
             } catch (\Exception $e) {
                 $this->errors[] = "Error processing table {$tableName}: " . $e->getMessage();
                 $errorCount++;
             }
-            
+
             $progressBar->advance();
         }
-        
+
         $progressBar->finish();
         $this->line(''); // Add newline after progress bar
-        
+
         // Show summary
         $this->info("Batch generation completed: {$successCount} tables processed successfully, {$errorCount} errors.");
-        
+
         // Show errors if any
         if (!empty($this->errors)) {
             $this->showProgressAndErrors();
         }
-        
+
         return $errorCount > 0 ? 1 : 0;
     }
-    
+
     /**
      * Handle component skipping based on options.
      *
@@ -557,25 +553,25 @@ class GenerateCrudCommand extends Command
     protected function handleComponentSkipping(array $options)
     {
         $skipComponents = [];
-        
+
         // If specific components are requested, skip everything else
         $specificComponents = $this->getComponentsToGenerate();
-        
+
         if (!empty($specificComponents) && count($specificComponents) < count($this->generators)) {
             $skipComponents = array_keys($this->generators);
             $skipComponents = array_diff($skipComponents, $specificComponents);
         }
-        
+
         // Check for explicit skip options in $options
         foreach ($this->generators as $component => $generator) {
             if (isset($options["skip_{$component}"]) && $options["skip_{$component}"]) {
                 $skipComponents[] = $component;
             }
         }
-        
+
         return array_unique($skipComponents);
     }
-    
+
     /**
      * Show progress and report any errors that occurred.
      *
@@ -585,14 +581,14 @@ class GenerateCrudCommand extends Command
     {
         // Show a summary of generated files
         $this->info("\nGenerated files:");
-        
+
         foreach ($this->generatedFiles as $component => $files) {
             $this->line("\n<comment>{$component}:</comment>");
             foreach ($files as $file) {
                 $this->line("  - " . $file);
             }
         }
-        
+
         // Show any errors that occurred
         if (!empty($this->errors)) {
             $this->error("\nErrors encountered:");
@@ -601,7 +597,7 @@ class GenerateCrudCommand extends Command
             }
         }
     }
-    
+
     /**
      * Implement dry run mode (no files are written).
      *
@@ -613,9 +609,9 @@ class GenerateCrudCommand extends Command
         if (!$dryRun) {
             return;
         }
-        
+
         $this->warn('DRY RUN MODE - No files will be written');
-        
+
         // Modify each generator to preview instead of writing files
         foreach ($this->generators as $component => $generator) {
             if (method_exists($generator, 'enableDryRun')) {
@@ -623,7 +619,7 @@ class GenerateCrudCommand extends Command
             }
         }
     }
-    
+
     /**
      * Prepare options array based on command options.
      *
@@ -632,26 +628,26 @@ class GenerateCrudCommand extends Command
     protected function prepareOptions()
     {
         $options = [];
-        
+
         // Add theme option
         $options['theme'] = $this->option('theme') ?? 'vuexy';
-        
+
         // Add API option
-        $options['api'] = $this->option('api');
-        
+        $options['with-api'] = $this->option('with-api');
+
         // Add custom path if provided
         if ($this->option('path')) {
             $options['custom_path'] = $this->option('path');
         }
-        
+
         // Add custom namespace if provided
         if ($this->option('namespace')) {
             $options['custom_namespace'] = $this->option('namespace');
         }
-        
+
         return $options;
     }
-    
+
     /**
      * Determine which components to generate based on command options.
      *
@@ -660,27 +656,27 @@ class GenerateCrudCommand extends Command
     protected function getComponentsToGenerate()
     {
         $components = [];
-        
+
         // Check each component-specific option
         foreach (array_keys($this->generators) as $component) {
             if ($this->option($component)) {
                 $components[] = $component;
             }
         }
-        
+
         // If API option is specified, include API-specific components
-        if ($this->option('api')) {
+        if ($this->option('with-api')) {
             $components = array_merge($components, ['controller', 'resource', 'request', 'model', 'route']);
         }
-        
+
         // If no specific components are selected, generate all
         if (empty($components)) {
             $components = array_keys($this->generators);
         }
-        
+
         return $components;
     }
-    
+
     /**
      * Check if a specific component should be generated.
      *

@@ -44,8 +44,7 @@ class GenerateDocumentationCommand extends Command
                             {--ui : Generate only UI user guides}
                             {--format= : Documentation format (markdown, html, pdf)}
                             {--output= : Output directory for documentation files}
-                            {--connection= : Database connection to use}
-                            {--no-interaction : Do not ask any interactive questions}
+                            {--connection= : Database connection to use}                            
                             {--force : Overwrite existing documentation files}';
 
     /**
@@ -218,6 +217,8 @@ class GenerateDocumentationCommand extends Command
             // Analyze table structure
             $this->info('Analyzing database structure...');
             $databaseAnalysis = $this->databaseAnalyzer->analyze($table);
+            $databaseAnalysis = $this->databaseAnalyzer->getResults();
+
 
             // Analyze relationships
             $this->info('Analyzing relationships...');
@@ -321,6 +322,8 @@ class GenerateDocumentationCommand extends Command
             try {
                 // Analyze table structure
                 $databaseAnalysis = $this->databaseAnalyzer->analyze($table);
+                $databaseAnalysis = $this->databaseAnalyzer->getResults();
+
 
                 // Analyze relationships
                 $this->relationshipAnalyzer->analyze($table);
