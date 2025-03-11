@@ -43,8 +43,7 @@ class GenerateRelationshipsCommand extends Command
                             {--forms : Generate relationship management forms}
                             {--validation : Generate relationship validation rules}
                             {--force : Overwrite existing files}
-                            {--connection= : Database connection to use}
-                            {--no-interaction : Do not ask any interactive questions}
+                            {--connection= : Database connection to use}                            
                             {--dry-run : Run without creating any files}';
 
     /**

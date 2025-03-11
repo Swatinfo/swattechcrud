@@ -882,7 +882,7 @@ class RelationshipAnalyzer implements AnalyzerInterface
      *
      * @return array
      */
-    public function supportedRelationships() : array
+    public function supportedRelationships(): array
     {
         return [
             'hasMany',

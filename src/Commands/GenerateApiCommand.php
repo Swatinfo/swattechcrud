@@ -194,6 +194,8 @@ class GenerateApiCommand extends Command
             // Analyze table structure and relationships
             $this->info('Analyzing database structure...');
             $databaseAnalysis = $this->databaseAnalyzer->analyze($table);
+            $databaseAnalysis = $this->databaseAnalyzer->getResults();
+
 
             $this->info('Analyzing relationships...');
             $this->relationshipAnalyzer->analyze($table);
